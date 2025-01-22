@@ -17,7 +17,9 @@ impl<T: PrimeField> ShamierProtocol<T> {
         }
     }
 
+    // Given a secret and the number of passwords to generate from it, generate the password shares
     pub fn generate_shares(&self, secret: T) -> Vec<(T, T)> {
+        // initialize the set of points to interpolate on with the secret's x point
         let (x_points, y_points): (&mut Vec<T>, &mut Vec<T>) =
             (&mut vec![self.secret_x], &mut vec![secret]);
 
@@ -29,6 +31,7 @@ impl<T: PrimeField> ShamierProtocol<T> {
             self.quorom - 1
         };
 
+        // generate a bunch of points to fill up the quorom and give them random values
         for i in 0..n {
             if T::from(i) == self.secret_x {
                 continue;
@@ -40,60 +43,53 @@ impl<T: PrimeField> ShamierProtocol<T> {
             y_points.push(random_y);
         }
 
-        if self.secret_x >= T::from(self.quorom) {}
-
+        // Interpolate on the points generated i.e secret and other x_points in the quorom
         let polynomial = univariate_polynomial::UnivariatePolynomial::interpolate(
             x_points.clone(),
             y_points.clone(),
         );
 
-        let mut shares = vec![];
-        let mut shares_num = 0;
-
-        while shares_num < self.number_of_shares {
-            if (T::from(shares_num) == self.secret_x) {
-                shares_num += 1;
-            }
-
-            shares.push((
-                T::from(shares_num),
-                polynomial.evaluate(T::from(shares_num)),
-            ));
-
-            shares_num += 1;
-        }
-
-        println!("{:?}", shares);
-        shares
+        // Once we get the polynomial, evaluate the polynomial at random set of x_points of length (number of shares) and return them
+        std::iter::repeat(())
+            .map(|()| T::rand(&mut random))
+            .filter(|x| x != &self.secret_x)
+            .map(|x| (x.clone(), polynomial.evaluate(x)))
+            .take(self.number_of_shares as usize)
+            .collect()
     }
 
+    // Verify that the shares given to reconstruct a secret is up to the quorom
     fn verify_shares(&self, shares: &[(T, T)]) -> bool {
         shares.len() >= self.quorom as usize
     }
 
+    // Get back the secret given a list of password shares
     pub fn reconstruct_secret(&self, shares: &[(T, T)]) -> Result<T, &str> {
         if !self.verify_shares(shares) {
             return Err("Not enough shares to reconstruct secret");
         }
 
+        // Get the list of x_points and y_points from the shares
         let (x_points, y_points) = shares.iter().fold((vec![], vec![]), |acc, curr| {
             (
                 {
-                    let mut vec_a = vec![curr.0]; // Start with the current value
-                    vec_a.extend(acc.0); // Append the previous values
-                    vec_a // Return the resulting vector
+                    let mut vec_a = vec![curr.0];
+                    vec_a.extend(acc.0);
+                    vec_a
                 },
                 {
-                    let mut vec_b = vec![curr.1]; // Start with the current value
-                    vec_b.extend(acc.1); // Append the previous values
-                    vec_b // Return the resulting vector
+                    let mut vec_b = vec![curr.1];
+                    vec_b.extend(acc.1);
+                    vec_b
                 },
             )
         });
 
+        // Get back the polynomial we got while generating the shares
         let original_polynomial =
             univariate_polynomial::UnivariatePolynomial::interpolate(x_points, y_points);
 
+        // Evaluate the polynomial at secret's x_point
         Ok(original_polynomial.evaluate(self.secret_x))
     }
 }

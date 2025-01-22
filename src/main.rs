@@ -1,3 +1,4 @@
+mod multilinear_polynomial;
 mod shamier_protocol;
 mod univariate_polynomial;
 

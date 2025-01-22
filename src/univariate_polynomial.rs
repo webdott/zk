@@ -19,7 +19,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     }
 
     // Given a specific list of points, find the original polynomial
-    pub fn interpolate(x_points: Vec<T>, y_points: Vec<T>) -> UnivariatePolynomial<T> {
+    pub fn interpolate(x_points: Vec<T>, y_points: Vec<T>) -> Self {
         let n = x_points.len();
 
         let mut res = UnivariatePolynomial {
@@ -55,7 +55,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     // UnivariatePolynomial {
     //      coefficients: [1]
     // } which represents the number 1.
-    pub fn scalar_mul(&self, num: T) -> UnivariatePolynomial<T> {
+    pub fn scalar_mul(&self, num: T) -> Self {
         let n = self.coeffients.len();
         let mut res = vec![T::from(0); n];
 
@@ -67,7 +67,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     }
 
     // Multiply polynomials together
-    pub fn mul(&self, p2: &UnivariatePolynomial<T>) -> UnivariatePolynomial<T> {
+    pub fn mul(&self, p2: &Self) -> Self {
         let len_1 = self.coeffients.len();
         let len_2 = p2.coeffients.len();
 
@@ -96,7 +96,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     }
 
     // add polynomials together
-    pub fn add(&self, p2: &UnivariatePolynomial<T>) -> UnivariatePolynomial<T> {
+    pub fn add(&self, p2: &Self) -> Self {
         let len_1 = self.coeffients.len();
         let len_2 = p2.coeffients.len();
 
