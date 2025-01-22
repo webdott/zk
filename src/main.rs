@@ -1,3 +1,4 @@
+mod shamier_protocol;
 mod univariate_polynomial;
 
 use ark_bn254::Fq;
@@ -17,10 +18,9 @@ fn main() {
 
     println!(
         "{:?}",
-        univariate_polynomial::UnivariatePolynomial::interpolate(vec![
-            Fq::from(8),
-            Fq::from(10),
-            Fq::from(16)
-        ])
+        univariate_polynomial::UnivariatePolynomial::interpolate(
+            vec![Fq::from(0), Fq::from(1), Fq::from(2)],
+            vec![Fq::from(8), Fq::from(10), Fq::from(16)]
+        )
     );
 }

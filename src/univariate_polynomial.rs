@@ -19,8 +19,8 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     }
 
     // Given a specific list of points, find the original polynomial
-    pub fn interpolate(points: Vec<T>) -> UnivariatePolynomial<T> {
-        let n = points.len();
+    pub fn interpolate(x_points: Vec<T>, y_points: Vec<T>) -> UnivariatePolynomial<T> {
+        let n = x_points.len();
 
         let mut res = UnivariatePolynomial {
             coeffients: vec![T::from(0); n],
@@ -38,14 +38,14 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
                 }
 
                 let int_poly = UnivariatePolynomial {
-                    coeffients: vec![-(T::from(j as u64)) / T::from(1), T::from(1)],
+                    coeffients: vec![-(T::from(x_points[j])) / T::from(1), T::from(1)],
                 };
 
-                denominator *= T::from(i as u64) - T::from(j as u64);
+                denominator *= T::from(x_points[i]) - T::from(x_points[j]);
                 running_poly = running_poly.mul(&int_poly)
             }
 
-            res = res.add(&running_poly.scalar_mul(points[i] / denominator));
+            res = res.add(&running_poly.scalar_mul(y_points[i] / denominator));
         }
 
         res
@@ -126,17 +126,30 @@ mod test {
 
     #[test]
     pub fn test_interpolate() {
-        let poly = UnivariatePolynomial::interpolate(vec![
-            Fq::from(0),
-            Fq::from(1),
-            Fq::from(1),
-            Fq::from(2),
-            Fq::from(3),
-            Fq::from(5),
-            Fq::from(8),
-            Fq::from(13),
-            Fq::from(21),
-        ]);
+        let poly = UnivariatePolynomial::interpolate(
+            vec![
+                Fq::from(0),
+                Fq::from(1),
+                Fq::from(2),
+                Fq::from(3),
+                Fq::from(4),
+                Fq::from(5),
+                Fq::from(6),
+                Fq::from(7),
+                Fq::from(8),
+            ],
+            vec![
+                Fq::from(0),
+                Fq::from(1),
+                Fq::from(1),
+                Fq::from(2),
+                Fq::from(3),
+                Fq::from(5),
+                Fq::from(8),
+                Fq::from(13),
+                Fq::from(21),
+            ],
+        );
 
         let mut random_x = rand::thread_rng();
         let random_u64: u64 = random_x.gen_range(2..100);
@@ -149,14 +162,30 @@ mod test {
 
     #[test]
     pub fn test_interpolate_2() {
-        let poly1 =
-            UnivariatePolynomial::interpolate(vec![Fq::from(8), Fq::from(10), Fq::from(16)]);
-        let poly2 = UnivariatePolynomial::interpolate(vec![Fq::from(0), Fq::from(2)]);
+        let poly1 = UnivariatePolynomial::interpolate(
+            vec![Fq::from(0), Fq::from(1), Fq::from(2)],
+            vec![Fq::from(8), Fq::from(10), Fq::from(16)],
+        );
+
+        // f(x) = 2x
+        // [(0, 0), (1,2)]
+        let poly2 = UnivariatePolynomial::interpolate(
+            vec![Fq::from(0), Fq::from(1)],
+            vec![Fq::from(0), Fq::from(2)],
+        );
+
+        // f(x) = 2x
+        // [(2, 4), (4,8)]
+        let poly3 = UnivariatePolynomial::interpolate(
+            vec![Fq::from(2), Fq::from(4)],
+            vec![Fq::from(4), Fq::from(8)],
+        );
 
         assert_eq!(
             poly1.coeffients,
             vec![Fq::from(8), Fq::from(0), Fq::from(2)]
         );
         assert_eq!(poly2.coeffients, vec![Fq::from(0), Fq::from(2)]);
+        assert_eq!(poly3.coeffients, vec![Fq::from(0), Fq::from(2)]);
     }
 }
