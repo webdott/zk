@@ -1,6 +1,7 @@
 use ark_ff::PrimeField;
 use std::iter;
 
+#[derive(Debug)]
 struct MultiLinearPolynomial<T: PrimeField> {
     evaluation_points: Vec<T>,
 }
@@ -10,11 +11,15 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         MultiLinearPolynomial { evaluation_points }
     }
 
-    // Given the index where the bit in question is turned off, return flipped index
-    fn get_flipped_bit_index(&self, variable_index: usize, init_variable_point: usize) -> usize {
-        let power = self.evaluation_points.len().ilog2() - 1 - (variable_index as u32);
+    fn number_of_variables(&self) -> u32 {
+        self.evaluation_points.len().ilog2()
+    }
 
-        init_variable_point + 2_usize.pow(power)
+    // Given the index where the bit in question is turned off, return flipped index
+    fn get_flipped_bit_with_bitwise_or(&self, index_to_flip: usize, bin: usize) -> usize {
+        let power = self.number_of_variables() - 1 - (index_to_flip as u32);
+
+        bin | 2_usize.pow(power)
     }
 
     pub fn partially_evaluate(&self, variable: (usize, T)) -> Self {
@@ -28,20 +33,20 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         let evaluation_length = self.evaluation_points.len();
         let new_evaluation_points_length = evaluation_length / 2;
 
-        let mut init_variable_point = 0;
-        let power = self.evaluation_points.len() - 1 - variable.0;
+        let mut y1_index = 0;
+        let power = (self.number_of_variables() as usize) - 1 - variable.0;
 
         let new_evaluation_points = iter::repeat(())
             .map(|()| {
-                let y1 = &self.evaluation_points[init_variable_point];
-                let y2 = &self.evaluation_points
-                    [self.get_flipped_bit_index(variable.0, init_variable_point)];
+                let y1 = &self.evaluation_points[y1_index];
 
-                init_variable_point = if (init_variable_point + 1) % 2_usize.pow(power as u32) == 0
-                {
-                    y2.into_bigint().as_ref()[0] as usize + 1
+                let y2_index = self.get_flipped_bit_with_bitwise_or(variable.0, y1_index);
+                let y2 = &self.evaluation_points[y2_index];
+
+                y1_index = if (y1_index + 1) % 2_usize.pow(power as u32) == 0 {
+                    y2_index + 1
                 } else {
-                    init_variable_point + 1
+                    y1_index + 1
                 };
 
                 *y1 + ((*y2 - *y1) * variable.1)
@@ -86,7 +91,8 @@ mod test {
     use ark_bn254::Fq;
 
     #[test]
-    pub fn test_evaluate() {
+    pub fn test_evaluate_4_variables() {
+        // 3ac + 4bd + 5ab -> where a = 4, b = 2, c = 6, d = 1
         let mlp = MultiLinearPolynomial::new(vec![
             Fq::from(0),
             Fq::from(0),
@@ -119,7 +125,8 @@ mod test {
     }
 
     #[test]
-    pub fn test_evaluate_incomplete_points() {
+    pub fn test_partially_evaluate_4_variables_incomplete_points() {
+        // 3ac + 4bd + 5ab -> where a = 4
         let mlp = MultiLinearPolynomial::new(vec![
             Fq::from(0),
             Fq::from(0),
@@ -152,6 +159,27 @@ mod test {
                 Fq::from(32),
                 Fq::from(36)
             ],
+        );
+    }
+
+    #[test]
+    pub fn test_partially_evaluate_3_variables_incomplete_points() {
+        //2ab + 3bc -> where c = 3
+        let mlp = MultiLinearPolynomial::new(vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(5),
+        ]);
+
+        assert_eq!(
+            mlp.evaluate(vec![None, None, Some(Fq::from(3))])
+                .evaluation_points,
+            vec![Fq::from(0), Fq::from(9), Fq::from(0), Fq::from(11)],
         );
     }
 }
