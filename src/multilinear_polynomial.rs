@@ -10,6 +10,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         MultiLinearPolynomial { evaluation_points }
     }
 
+    // Given the index where the bit in question is turned off, return flipped index
     fn get_flipped_bit_index(&self, variable_index: usize, init_variable_point: usize) -> usize {
         let power = self.evaluation_points.len().ilog2() - 1 - (variable_index as u32);
 
@@ -23,6 +24,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         // y1 -> first point
         // y2 -> second point
         // r -> evaluation point
+
         let evaluation_length = self.evaluation_points.len();
         let new_evaluation_points_length = evaluation_length / 2;
 
