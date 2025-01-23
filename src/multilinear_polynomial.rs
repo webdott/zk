@@ -8,6 +8,12 @@ pub struct MultiLinearPolynomial<T: PrimeField> {
 
 impl<T: PrimeField> MultiLinearPolynomial<T> {
     pub fn new(evaluation_points: Vec<T>) -> Self {
+        if !evaluation_points.len().is_power_of_two() {
+            panic!(
+                "Invalid Multilinear Polynomial: evaluation points length is not a power of two"
+            );
+        }
+
         MultiLinearPolynomial { evaluation_points }
     }
 
@@ -43,7 +49,6 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         let new_evaluation_points = iter::repeat(())
             .map(|()| {
                 let y1 = &self.evaluation_points[y1_index];
-
                 let y2_index = self.get_flipped_bit_with_bitwise_or(variable.0, y1_index);
                 let y2 = &self.evaluation_points[y2_index];
 
@@ -58,34 +63,32 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
             .take(new_evaluation_points_length)
             .collect();
 
-        MultiLinearPolynomial {
-            evaluation_points: new_evaluation_points,
-        }
+        MultiLinearPolynomial::new(new_evaluation_points)
     }
 
     pub fn evaluate(&self, points: Vec<Option<T>>) -> Self {
+        if points.len() != self.number_of_variables() as usize {
+            panic!("points length does not match number of variables");
+        }
+
         let mut done = 0;
 
-        points
-            .iter()
-            .enumerate()
-            .map(|(idx, point)| (idx, point))
-            .fold(
-                MultiLinearPolynomial::new(self.evaluation_points.clone()),
-                |acc, (idx, point)| {
-                    let mlp = match point {
-                        Some(_) => {
-                            let new_acc = acc.partially_evaluate((idx - done, point.unwrap()));
-                            done += 1;
+        points.iter().enumerate().fold(
+            MultiLinearPolynomial::new(self.evaluation_points.clone()),
+            |acc, (idx, point)| {
+                let mlp = match point {
+                    Some(_) => {
+                        let new_acc = acc.partially_evaluate((idx - done, point.unwrap()));
+                        done += 1;
 
-                            new_acc
-                        }
-                        None => acc,
-                    };
+                        new_acc
+                    }
+                    None => acc,
+                };
 
-                    mlp
-                },
-            )
+                mlp
+            },
+        )
     }
 }
 
