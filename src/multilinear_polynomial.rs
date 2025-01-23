@@ -2,12 +2,12 @@ use ark_ff::PrimeField;
 use std::iter;
 
 #[derive(Debug)]
-struct MultiLinearPolynomial<T: PrimeField> {
+pub struct MultiLinearPolynomial<T: PrimeField> {
     evaluation_points: Vec<T>,
 }
 
 impl<T: PrimeField> MultiLinearPolynomial<T> {
-    fn new(evaluation_points: Vec<T>) -> Self {
+    pub fn new(evaluation_points: Vec<T>) -> Self {
         MultiLinearPolynomial { evaluation_points }
     }
 
@@ -16,10 +16,14 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
     }
 
     // Given the index where the bit in question is turned off, return flipped index
-    fn get_flipped_bit_with_bitwise_or(&self, index_to_flip: usize, bin: usize) -> usize {
+    fn get_flipped_bit_with_bitwise_or(
+        &self,
+        index_to_flip: usize,
+        number_to_flip: usize,
+    ) -> usize {
         let power = self.number_of_variables() - 1 - (index_to_flip as u32);
 
-        bin | 2_usize.pow(power)
+        number_to_flip | 2_usize.pow(power)
     }
 
     pub fn partially_evaluate(&self, variable: (usize, T)) -> Self {
@@ -122,6 +126,15 @@ mod test {
             .evaluation_points,
             vec![Fq::from(120)],
         );
+
+        // 0000
+        // 0001
+        // ....
+        // 1111
+
+        // 0000
+        // 0010
+        // 0100
     }
 
     #[test]
