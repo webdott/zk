@@ -29,7 +29,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
     ) -> usize {
         let power = self.number_of_variables() - 1 - (index_to_flip as u32);
 
-        number_to_flip | 2_usize.pow(power)
+        number_to_flip | (1 << power)
     }
 
     pub fn partially_evaluate(&self, variable: (usize, T)) -> Self {
@@ -52,7 +52,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
                 let y2_index = self.get_flipped_bit_with_bitwise_or(variable.0, y1_index);
                 let y2 = &self.evaluation_points[y2_index];
 
-                y1_index = if (y1_index + 1) % 2_usize.pow(power as u32) == 0 {
+                y1_index = if (y1_index + 1) % (1 << power) == 0 {
                     y2_index + 1
                 } else {
                     y1_index + 1
