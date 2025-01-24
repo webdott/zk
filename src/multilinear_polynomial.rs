@@ -44,7 +44,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         let new_evaluation_points_length = evaluation_length / 2;
 
         let mut y1_index = 0;
-        let power = (self.number_of_variables() as usize) - 1 - variable.0;
+        let target = 1 << (self.number_of_variables() as usize) - 1 - variable.0;
 
         let new_evaluation_points = iter::repeat(())
             .map(|()| {
@@ -52,7 +52,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
                 let y2_index = self.get_flipped_bit_with_bitwise_or(variable.0, y1_index);
                 let y2 = &self.evaluation_points[y2_index];
 
-                y1_index = if (y1_index + 1) % (1 << power) == 0 {
+                y1_index = if (y1_index + 1) % target == 0 {
                     y2_index + 1
                 } else {
                     y1_index + 1
