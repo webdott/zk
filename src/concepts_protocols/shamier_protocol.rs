@@ -1,4 +1,4 @@
-use crate::univariate_polynomial;
+use crate::polynomials::univariate_polynomial;
 use ark_ff::PrimeField;
 use rand::Rng;
 
