@@ -1,7 +1,7 @@
 use ark_ff::FftField;
 
 pub struct Polynomial<T: FftField> {
-    coefficients: Vec<T>,
+    _marker: std::marker::PhantomData<T>,
 }
 
 impl<T: FftField> Polynomial<T> {
@@ -10,9 +10,9 @@ impl<T: FftField> Polynomial<T> {
         // ye = a0, a2, a4....an
         // yo = a1, a3, a5....an-1
 
-        // w(roots of unity) ->
-        // e^(2 * PI * i)/n (FFT)
-        // (1/n) * e^-(2 * PI * i)/n (IFFT)
+        // w -> (roots of unity):
+        // *   // (FFT) => e^(2 * PI * i)/n
+        // *   // (IFFT) => (1/n) * e^-(2 * PI * i)/n
 
         // P(w^j) = ye[j] + w^j * (yo[j])
         // P(-w^j) = ye[j] - w^j * (yo[j]); -w^j = w^(j + (n/2))
@@ -65,7 +65,6 @@ impl<T: FftField> Polynomial<T> {
             y[j + (n / 2)] = ye[j] - wj * yo[j];
         });
 
-        println!("{:?} y_values", y);
         y
     }
 
@@ -93,13 +92,9 @@ mod test {
     #[test]
     pub fn test_fft_and_ifft() {
         let coefficients = vec![Fr::from(5), Fr::from(3), Fr::from(2), Fr::from(1)];
-        // let fft = Polynomial::new(coefficients);
+        let values = Polynomial::transform_to_values(&coefficients);
+        let result_coefficients = Polynomial::transform_to_coefficients(&values);
 
-        assert_eq!(
-            Polynomial::transform_to_coefficients(
-                Polynomial::transform_to_values(&coefficients).as_slice()
-            ),
-            coefficients,
-        )
+        assert_eq!(result_coefficients, coefficients,)
     }
 }
