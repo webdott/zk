@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+ark-bls12-377 = "0.5.0"
 ark-bn254 = "0.5.0"
 ark-ff = "0.5.0"
+num = "0.4.3"
 rand = "0.8.5"

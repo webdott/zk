@@ -1,0 +1,10 @@
+/Users/webdot_30/Desktop/Projects.nosync/TestsandTutorials/rust-learning/zk-cohort/target/debug/deps/libnum_complex-15aa33841a1f52e3.rmeta: /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/lib.rs /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/cast.rs /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/pow.rs /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/complex_float.rs
+
+/Users/webdot_30/Desktop/Projects.nosync/TestsandTutorials/rust-learning/zk-cohort/target/debug/deps/libnum_complex-15aa33841a1f52e3.rlib: /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/lib.rs /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/cast.rs /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/pow.rs /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/complex_float.rs
+
+/Users/webdot_30/Desktop/Projects.nosync/TestsandTutorials/rust-learning/zk-cohort/target/debug/deps/num_complex-15aa33841a1f52e3.d: /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/lib.rs /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/cast.rs /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/pow.rs /Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/complex_float.rs
+
+/Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/lib.rs:
+/Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/cast.rs:
+/Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/pow.rs:
+/Users/webdot_30/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-complex-0.4.6/src/complex_float.rs:
