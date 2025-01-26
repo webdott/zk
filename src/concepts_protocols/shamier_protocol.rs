@@ -69,21 +69,24 @@ impl<T: PrimeField> ShamierProtocol<T> {
             return Err("Not enough shares to reconstruct secret");
         }
 
-        // Get the list of x_points and y_points from the shares
-        let (x_points, y_points) = shares.iter().fold((vec![], vec![]), |acc, curr| {
-            (
-                {
-                    let mut vec_a = vec![curr.0];
-                    vec_a.extend(acc.0);
-                    vec_a
-                },
-                {
-                    let mut vec_b = vec![curr.1];
-                    vec_b.extend(acc.1);
-                    vec_b
-                },
-            )
-        });
+        // Get the list of x_points and y_points from the shares (Optimise to take just d + 1 points to get polynomial back)
+        let (x_points, y_points) =
+            shares[0..self.quorom as usize]
+                .iter()
+                .fold((vec![], vec![]), |acc, curr| {
+                    (
+                        {
+                            let mut vec_a = vec![curr.0];
+                            vec_a.extend(acc.0);
+                            vec_a
+                        },
+                        {
+                            let mut vec_b = vec![curr.1];
+                            vec_b.extend(acc.1);
+                            vec_b
+                        },
+                    )
+                });
 
         // Get back the polynomial we got while generating the shares
         let original_polynomial =
@@ -148,7 +151,7 @@ mod test {
 
         let shares = shamier.generate_shares(secret.clone());
 
-        let regenerated_secret = shamier.reconstruct_secret(&shares[0..4]);
+        let regenerated_secret = shamier.reconstruct_secret(&shares);
 
         assert_eq!(regenerated_secret, Ok(secret));
     }
