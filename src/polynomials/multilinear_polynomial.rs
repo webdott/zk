@@ -1,7 +1,8 @@
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
+use bincode::serialize;
 use std::iter;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MultiLinearPolynomial<T: PrimeField> {
     evaluation_points: Vec<T>,
 }
@@ -17,7 +18,11 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         MultiLinearPolynomial { evaluation_points }
     }
 
-    fn number_of_variables(&self) -> u32 {
+    pub fn get_evaluation_points(&self) -> &Vec<T> {
+        &self.evaluation_points
+    }
+
+    pub fn number_of_variables(&self) -> u32 {
         self.evaluation_points.len().ilog2()
     }
 
@@ -90,6 +95,22 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
             },
         )
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        // Convert evaluation points to a serializable format (e.g., bytes)
+        let serializable_points: Vec<Vec<u8>> = self
+            .evaluation_points
+            .iter()
+            .map(|point| point.into_bigint().to_bytes_le())
+            .collect();
+
+        // Serialize the serializable format
+        serialize(&serializable_points).expect("Serialization of Multilinear struct failed")
+    }
+
+    pub fn evaluation_sum(&self) -> T {
+        self.evaluation_points.iter().sum()
+    }
 }
 
 #[cfg(test)]
@@ -129,15 +150,6 @@ mod test {
             .evaluation_points,
             vec![Fq::from(120)],
         );
-
-        // 0000
-        // 0001
-        // ....
-        // 1111
-
-        // 0000
-        // 0010
-        // 0100
     }
 
     #[test]
