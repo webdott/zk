@@ -44,6 +44,8 @@ impl<T: PrimeField> Prover<T> {
 
         let mut transcript = Transcript::new();
 
+        transcript.append(&self.initial_polynomial.to_bytes());
+
         let mut resulting_polynomial = self.initial_polynomial.clone();
 
         // keep adding current polynomial step and sum to the steps vec
@@ -118,6 +120,8 @@ impl<T: PrimeField> Verifier<T> {
     pub fn verify_proof(&self, proof: SumCheckProof<T>) -> bool {
         let mut evaluation_values: Vec<Option<T>> = vec![];
         let mut transcript = Transcript::new();
+
+        transcript.append(&self.initial_polynomial.to_bytes());
 
         // check that the initial polynomial evaluated and 0 and 1 is equal to initial claim sum
         if self.initial_polynomial.evaluation_sum() != proof.initial_claim_sum {
