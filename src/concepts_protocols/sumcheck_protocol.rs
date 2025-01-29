@@ -5,7 +5,7 @@ use std::iter;
 
 pub struct SumCheckProof<T: PrimeField> {
     initial_claim_sum: T,
-    round_steps: Vec<(T, MultiLinearPolynomial<T>)>,
+    round_steps: Vec<MultiLinearPolynomial<T>>,
 }
 
 pub struct Prover<T: PrimeField> {
@@ -38,8 +38,8 @@ impl<T: PrimeField> Prover<T> {
             .collect()
     }
 
-    fn generate_steps(&self) -> Vec<(T, MultiLinearPolynomial<T>)> {
-        let mut steps: Vec<(T, MultiLinearPolynomial<T>)> =
+    fn generate_steps(&self) -> Vec<MultiLinearPolynomial<T>> {
+        let mut steps: Vec<MultiLinearPolynomial<T>> =
             Vec::with_capacity(self.initial_polynomial.get_evaluation_points().len());
 
         let mut transcript = Transcript::new();
@@ -74,7 +74,7 @@ impl<T: PrimeField> Prover<T> {
 
             resulting_polynomial = resulting_polynomial.evaluate(points);
 
-            steps.push((claimed_sum, evaluated_polynomial_over_boolean_hypercube));
+            steps.push(evaluated_polynomial_over_boolean_hypercube);
         });
 
         steps
@@ -128,26 +128,33 @@ impl<T: PrimeField> Verifier<T> {
             return false;
         }
 
+        let mut curr_claimed_sum = proof.initial_claim_sum;
+
         // This is basically generating all the sampled values e.g(a,b,c)
         // This is done using the same hashing method that the prover used to generate them
-        for step in &proof.round_steps {
-            let (claimed_sum, evaluated_polynomial_over_boolean) = step;
-
+        for evaluated_polynomial_over_boolean in &proof.round_steps {
             // from each proof step, get the claimed sum and evaluated polynomial over boolean hypercube.
             // if these two sums don't match, there is no point moving forward
-            if evaluated_polynomial_over_boolean.evaluation_sum() != *claimed_sum {
+            if evaluated_polynomial_over_boolean.evaluation_sum() != curr_claimed_sum {
                 return false;
             }
 
-            transcript.append(&claimed_sum.into_bigint().to_bytes_le());
+            transcript.append(&curr_claimed_sum.into_bigint().to_bytes_le());
             transcript.append(&evaluated_polynomial_over_boolean.to_bytes());
 
+            let challenge = transcript.sample_challenge();
+
             // we then push append the byte equivalent of these values to the transcript and get a challenge which we store in evaluation values array
-            evaluation_values.push(Some(transcript.sample_challenge()));
+            evaluation_values.push(Some(challenge));
+
+            // new claim sum is gotten by evaluating the current univariate at the new challenge value
+            curr_claimed_sum = evaluated_polynomial_over_boolean
+                .evaluate(vec![Some(challenge)])
+                .evaluation_sum();
         }
 
         // if we have a last univariate polynomial variable, perform oracle check, else return false automatically
-        if let Some((_a, last_univariate_poly)) = proof.round_steps.last() {
+        if let Some(last_univariate_poly) = proof.round_steps.last() {
             self.perform_oracle_check(evaluation_values, last_univariate_poly)
         } else {
             false
