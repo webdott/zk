@@ -119,6 +119,11 @@ impl<T: PrimeField> Verifier<T> {
         let mut evaluation_values: Vec<Option<T>> = vec![];
         let mut transcript = Transcript::new();
 
+        // check that the initial polynomial evaluated and 0 and 1 is equal to initial claim sum
+        if self.initial_polynomial.evaluation_sum() != proof.initial_claim_sum {
+            return false;
+        }
+
         // This is basically generating all the sampled values e.g(a,b,c)
         // This is done using the same hashing method that the prover used to generate them
         for step in &proof.round_steps {
