@@ -3,7 +3,7 @@ use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
 use ark_ff::{BigInteger, PrimeField};
 use std::iter;
 
-struct SumCheckProof<T: PrimeField> {
+pub struct SumCheckProof<T: PrimeField> {
     initial_claim_sum: T,
     round_steps: Vec<(T, MultiLinearPolynomial<T>)>,
 }
