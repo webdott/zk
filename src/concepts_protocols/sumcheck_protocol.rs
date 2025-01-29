@@ -38,7 +38,7 @@ impl<T: PrimeField> Prover<T> {
             .collect()
     }
 
-    fn generate_steps(&self) -> Vec<MultiLinearPolynomial<T>> {
+    fn generate_univariate_poly_steps(&self) -> Vec<MultiLinearPolynomial<T>> {
         let mut steps: Vec<MultiLinearPolynomial<T>> =
             Vec::with_capacity(self.initial_polynomial.get_evaluation_points().len());
 
@@ -82,7 +82,7 @@ impl<T: PrimeField> Prover<T> {
 
     // This creates a sum check proof struct that with the steps generated and an initial claim sum
     pub fn generate_sumcheck_proof(&self) -> SumCheckProof<T> {
-        let round_steps = self.generate_steps();
+        let round_steps = self.generate_univariate_poly_steps();
 
         SumCheckProof {
             initial_claim_sum: self.initial_polynomial.evaluation_sum(),
