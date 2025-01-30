@@ -3,16 +3,20 @@ use std::{cmp, mem};
 
 #[derive(Debug)]
 pub struct UnivariatePolynomial<T: PrimeField> {
-    pub coeffients: Vec<T>,
+    pub coefficients: Vec<T>,
 }
 
 impl<T: PrimeField> UnivariatePolynomial<T> {
+    pub fn new(coefficients: Vec<T>) -> Self {
+        UnivariatePolynomial { coefficients }
+    }
+
     // given a point, evaluate the result of the polynomial at that point
     pub fn evaluate(&self, x: T) -> T {
         let mut result: T = T::from(0);
 
-        for i in 0..self.coeffients.len() {
-            result += self.coeffients[i] * (x.pow([i as u64]));
+        for i in 0..self.coefficients.len() {
+            result += self.coefficients[i] * (x.pow([i as u64]));
         }
 
         result
@@ -23,13 +27,13 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
         let n = x_points.len();
 
         let mut res = UnivariatePolynomial {
-            coeffients: vec![T::from(0); n],
+            coefficients: vec![T::from(0); n],
         };
 
         for i in 0..n {
             let mut denominator: T = T::from(1);
             let mut running_poly = UnivariatePolynomial {
-                coeffients: vec![T::from(1)],
+                coefficients: vec![T::from(1)],
             };
 
             for j in 0..n {
@@ -38,7 +42,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
                 }
 
                 let int_poly = UnivariatePolynomial {
-                    coeffients: vec![-(T::from(x_points[j])) / T::from(1), T::from(1)],
+                    coefficients: vec![-(T::from(x_points[j])) / T::from(1), T::from(1)],
                 };
 
                 denominator *= T::from(x_points[i]) - T::from(x_points[j]);
@@ -56,25 +60,25 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     //      coefficients: [1]
     // } which represents the number 1.
     pub fn scalar_mul(&self, num: T) -> Self {
-        let n = self.coeffients.len();
+        let n = self.coefficients.len();
         let mut res = vec![T::from(0); n];
 
         for i in 0..n {
-            res[i] = self.coeffients[i] * num;
+            res[i] = self.coefficients[i] * num;
         }
 
-        UnivariatePolynomial { coeffients: res }
+        UnivariatePolynomial { coefficients: res }
     }
 
     // Multiply polynomials together
     pub fn mul(&self, p2: &Self) -> Self {
-        let len_1 = self.coeffients.len();
-        let len_2 = p2.coeffients.len();
+        let len_1 = self.coefficients.len();
+        let len_2 = p2.coefficients.len();
 
         let max_len = cmp::max(len_1, len_2);
 
-        let mut greater_coef = &self.coeffients;
-        let mut lesser_coef = &p2.coeffients;
+        let mut greater_coef = &self.coefficients;
+        let mut lesser_coef = &p2.coefficients;
 
         if len_2 > len_1 {
             mem::swap(&mut greater_coef, &mut lesser_coef);
@@ -92,13 +96,15 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
             }
         }
 
-        UnivariatePolynomial { coeffients: coefs }
+        UnivariatePolynomial {
+            coefficients: coefs,
+        }
     }
 
     // add polynomials together
     pub fn add(&self, p2: &Self) -> Self {
-        let len_1 = self.coeffients.len();
-        let len_2 = p2.coeffients.len();
+        let len_1 = self.coefficients.len();
+        let len_2 = p2.coefficients.len();
 
         let max_len = cmp::min(len_1, len_2);
 
@@ -106,15 +112,17 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
 
         for i in 0..max_len {
             if i < len_1 {
-                coefs[i] += self.coeffients[i];
+                coefs[i] += self.coefficients[i];
             }
 
             if i < len_2 {
-                coefs[i] += p2.coeffients[i];
+                coefs[i] += p2.coefficients[i];
             }
         }
 
-        UnivariatePolynomial { coeffients: coefs }
+        UnivariatePolynomial {
+            coefficients: coefs,
+        }
     }
 }
 
@@ -182,10 +190,10 @@ mod test {
         );
 
         assert_eq!(
-            poly1.coeffients,
+            poly1.coefficients,
             vec![Fq::from(8), Fq::from(0), Fq::from(2)]
         );
-        assert_eq!(poly2.coeffients, vec![Fq::from(0), Fq::from(2)]);
-        assert_eq!(poly3.coeffients, vec![Fq::from(0), Fq::from(2)]);
+        assert_eq!(poly2.coefficients, vec![Fq::from(0), Fq::from(2)]);
+        assert_eq!(poly3.coefficients, vec![Fq::from(0), Fq::from(2)]);
     }
 }
