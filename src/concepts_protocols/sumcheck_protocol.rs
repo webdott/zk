@@ -44,21 +44,19 @@ impl<T: PrimeField> Prover<T> {
 
         let mut transcript = Transcript::new();
 
+        // append initial polynomial to transcript to initiate process
         transcript.append(&self.initial_polynomial.to_bytes());
 
         let mut resulting_polynomial = self.initial_polynomial.clone();
 
         // keep adding current polynomial step and sum to the steps vec
         (0..self.initial_polynomial.number_of_variables()).for_each(|_i| {
-            let (mut eval_0, mut eval_1) = (T::from(0), T::from(0));
             let evaluation_points = resulting_polynomial.get_evaluation_points();
-
-            let half = evaluation_points.len() / 2;
-
-            (0..half).for_each(|x| {
-                eval_0 += &evaluation_points[x];
-                eval_1 += &evaluation_points[half + x];
-            });
+            let (first_half, second_half) = evaluation_points.split_at(evaluation_points.len() / 2);
+            let (eval_0, eval_1) = (
+                T::from(first_half.iter().sum::<T>()),
+                T::from(second_half.iter().sum::<T>()),
+            );
 
             let claimed_sum = eval_0 + eval_1;
             let evaluated_polynomial_over_boolean_hypercube =
@@ -120,15 +118,15 @@ impl<T: PrimeField> Verifier<T> {
     pub fn verify_proof(&self, proof: SumCheckProof<T>) -> bool {
         let mut evaluation_values: Vec<Option<T>> = vec![];
         let mut transcript = Transcript::new();
+        let mut curr_claimed_sum = proof.initial_claim_sum;
 
+        // append initial polynomial to transcript to initiate process
         transcript.append(&self.initial_polynomial.to_bytes());
 
         // check that the initial polynomial evaluated and 0 and 1 is equal to initial claim sum
-        if self.initial_polynomial.evaluation_sum() != proof.initial_claim_sum {
+        if self.initial_polynomial.evaluation_sum() != curr_claimed_sum {
             return false;
         }
-
-        let mut curr_claimed_sum = proof.initial_claim_sum;
 
         // This is basically generating all the sampled values e.g(a,b,c)
         // This is done using the same hashing method that the prover used to generate them
@@ -154,17 +152,20 @@ impl<T: PrimeField> Verifier<T> {
         }
 
         // if we have a last univariate polynomial variable, perform oracle check, else return false automatically
-        if let Some(last_univariate_poly) = proof.round_steps.last() {
-            self.perform_oracle_check(evaluation_values, last_univariate_poly)
-        } else {
-            false
-        }
+        let is_correct = match proof.round_steps.last() {
+            Some(last_univariate_poly) => {
+                self.perform_oracle_check(evaluation_values, last_univariate_poly)
+            }
+            None => false,
+        };
+
+        is_correct
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::concepts_protocols::sumcheck_protocol::{Prover, Verifier};
+    use crate::concepts_protocols::sumcheck_protocol::{Prover, SumCheckProof, Verifier};
     use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
     use ark_bn254::Fq;
 
@@ -180,6 +181,7 @@ mod test {
             Fq::from(2),
             Fq::from(5),
         ];
+
         let prover = Prover::new(MultiLinearPolynomial::new(polynomial.clone()));
 
         let sum_check_proof = prover.generate_sumcheck_proof();
@@ -187,5 +189,32 @@ mod test {
         let verifier = Verifier::new(MultiLinearPolynomial::new(polynomial));
 
         assert!(verifier.verify_proof(sum_check_proof));
+    }
+
+    #[test]
+    fn test_failure() {
+        let polynomial = vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(65),
+        ];
+
+        let sum_check_proof = SumCheckProof {
+            initial_claim_sum: Fq::from(10),
+            round_steps: vec![
+                MultiLinearPolynomial::new(vec![Fq::from(3), Fq::from(7)]),
+                MultiLinearPolynomial::new(vec![Fq::from(9), Fq::from(10)]),
+                MultiLinearPolynomial::new(vec![Fq::from(10), Fq::from(97)]),
+            ],
+        };
+
+        let verifier = Verifier::new(MultiLinearPolynomial::new(polynomial));
+
+        assert_eq!(verifier.verify_proof(sum_check_proof), false);
     }
 }
