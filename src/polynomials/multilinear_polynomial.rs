@@ -15,7 +15,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
             );
         }
 
-        MultiLinearPolynomial { evaluation_points }
+        Self { evaluation_points }
     }
 
     pub fn get_evaluation_points(&self) -> &Vec<T> {
@@ -68,7 +68,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
             .take(new_evaluation_points_length)
             .collect();
 
-        MultiLinearPolynomial::new(new_evaluation_points)
+        Self::new(new_evaluation_points)
     }
 
     pub fn evaluate(&self, points: Vec<Option<T>>) -> Self {
