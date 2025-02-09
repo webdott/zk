@@ -44,7 +44,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
                 }
 
                 let int_poly = UnivariatePolynomial {
-                    coefficients: vec![-(T::from(x_points[j])) / T::from(1), T::from(1)],
+                    coefficients: vec![-T::from(x_points[j]), T::from(1)],
                 };
 
                 denominator *= T::from(x_points[i]) - T::from(x_points[j]);
@@ -86,7 +86,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
             mem::swap(&mut greater_coef, &mut lesser_coef);
         }
 
-        let mut coefs: Vec<T> = vec![T::from(0); max_len + 1];
+        let mut coefs: Vec<T> = vec![T::from(0); len_2 + len_1 - 1];
 
         for i in 0..max_len {
             let mut idx = i;
@@ -135,9 +135,28 @@ mod test {
 
     #[test]
     pub fn test_evaluate() {
-        let poly1 = UnivariatePolynomial::new(vec![Fq::from(20), Fq::from(10), Fq::from(3)]);
+        let poly = UnivariatePolynomial::new(vec![Fq::from(20), Fq::from(10), Fq::from(3)]);
 
-        assert_eq!(poly1.evaluate(Fq::from(2)), Fq::from(52));
+        assert_eq!(poly.evaluate(Fq::from(2)), Fq::from(52));
+    }
+
+    #[test]
+    pub fn test_mul() {
+        let poly1 = UnivariatePolynomial::new(vec![Fq::from(0), Fq::from(0), Fq::from(2)]);
+        let poly2 =
+            UnivariatePolynomial::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(4)]);
+
+        assert_eq!(
+            poly1.mul(&poly2).coefficients,
+            vec![
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(8)
+            ]
+        );
     }
 
     #[test]
