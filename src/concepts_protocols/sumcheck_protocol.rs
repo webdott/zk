@@ -1,4 +1,4 @@
-use crate::concepts_protocols::fiat_shamier::transcript::Transcript;
+use crate::concepts_protocols::fiat_shamir::transcript::Transcript;
 use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
 use ark_ff::{BigInteger, PrimeField};
 use std::iter;
@@ -22,7 +22,7 @@ impl<T: PrimeField> Prover<T> {
     // this generates a set of points to partially evaluate a polynomial
     fn generate_evaluation_points(
         &self,
-        transcript: &Transcript<T>,
+        transcript: &mut Transcript<T>,
         variables_length: usize,
     ) -> Vec<Option<T>> {
         iter::repeat(())
@@ -66,7 +66,7 @@ impl<T: PrimeField> Prover<T> {
             transcript.append(&evaluated_polynomial_over_boolean_hypercube.to_bytes());
 
             let points = self.generate_evaluation_points(
-                &transcript,
+                &mut transcript,
                 resulting_polynomial.number_of_variables() as usize,
             );
 

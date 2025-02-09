@@ -1,4 +1,5 @@
 use ark_ff::PrimeField;
+use sha3::digest::Update;
 use sha3::{Digest, Keccak256};
 use std::marker::PhantomData;
 
@@ -17,13 +18,14 @@ impl<T: PrimeField> Transcript<T> {
 
     // update current hasher state with new data
     pub fn append(&mut self, data: &[u8]) {
-        self.hasher.update(data);
+        Update::update(&mut self.hasher, data);
     }
 
-    pub fn sample_challenge(&self) -> T {
+    pub fn sample_challenge(&mut self) -> T {
         // uses the current hasher and generates a field value from it
         let hash_result = self.hasher.clone().finalize();
 
+        self.append(&hash_result);
         T::from_le_bytes_mod_order(&hash_result)
     }
 }
@@ -45,10 +47,11 @@ impl<T: PrimeField, F: GenericHashFunctionTrait> GenericTranscript<T, F> {
         self.hash_function.absorb(data);
     }
 
-    pub fn generate_challenge(&self) -> T {
+    pub fn generate_challenge(&mut self) -> T {
         // uses the current hasher and generates a field value from it
         let hash_result = self.hash_function.squeeze();
 
+        self.append(&hash_result);
         T::from_le_bytes_mod_order(&hash_result)
     }
 }
@@ -60,7 +63,7 @@ pub trait GenericHashFunctionTrait {
 
 impl GenericHashFunctionTrait for Keccak256 {
     fn absorb(&mut self, data: &[u8]) {
-        let _ = self.update(data);
+        let _ = sha3::Digest::update(self, data);
     }
 
     fn squeeze(&self) -> Vec<u8> {
