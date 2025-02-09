@@ -14,9 +14,11 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     // given a point, evaluate the result of the polynomial at that point
     pub fn evaluate(&self, x: T) -> T {
         let mut result: T = T::from(0);
+        let mut running_x: T = T::from(1);
 
         for i in 0..self.coefficients.len() {
-            result += self.coefficients[i] * (x.pow([i as u64]));
+            result += self.coefficients[i] * (running_x);
+            running_x *= x;
         }
 
         result
@@ -130,7 +132,13 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
 mod test {
     use super::UnivariatePolynomial;
     use ark_bn254::Fq;
-    use rand::Rng;
+
+    #[test]
+    pub fn test_evaluate() {
+        let poly1 = UnivariatePolynomial::new(vec![Fq::from(20), Fq::from(10), Fq::from(3)]);
+
+        assert_eq!(poly1.evaluate(Fq::from(2)), Fq::from(52));
+    }
 
     #[test]
     pub fn test_interpolate() {
@@ -159,12 +167,9 @@ mod test {
             ],
         );
 
-        let mut random_x = rand::thread_rng();
-        let random_u64: u64 = random_x.gen_range(2..100);
-
         assert_eq!(
-            poly.evaluate(Fq::from(random_u64)),
-            poly.evaluate(Fq::from(random_u64 - 1)) + poly.evaluate(Fq::from(random_u64 - 2))
+            poly.evaluate(Fq::from(5)),
+            poly.evaluate(Fq::from(5 - 1)) + poly.evaluate(Fq::from(5 - 2))
         );
     }
 
