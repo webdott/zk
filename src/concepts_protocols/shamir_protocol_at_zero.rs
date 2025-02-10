@@ -4,15 +4,15 @@ use ark_ff::PrimeField;
 use rand::Rng;
 use std::marker::PhantomData;
 
-pub struct ShamierProtocol<T: PrimeField> {
+pub struct ShamirProtocol<T: PrimeField> {
     _marker: PhantomData<T>,
     quorom: u32,
     number_of_shares: u32,
 }
 
-impl<T: PrimeField> ShamierProtocol<T> {
+impl<T: PrimeField> ShamirProtocol<T> {
     pub fn new(quorom: u32, number_of_shares: u32) -> Self {
-        ShamierProtocol {
+        ShamirProtocol {
             _marker: PhantomData,
             quorom,
             number_of_shares,
@@ -86,20 +86,20 @@ mod test {
 
     #[test]
     pub fn test_generate_shares() {
-        let shamier = ShamierProtocol::new(3, 7);
+        let shamir = ShamirProtocol::new(3, 7);
 
-        let shares = shamier.generate_shares(Fq::from(62));
+        let shares = shamir.generate_shares(Fq::from(62));
 
         assert_eq!(shares.len(), 7);
     }
 
     #[test]
     pub fn test_reconstruct_secret_not_enough() {
-        let shamier = ShamierProtocol::new(3, 7);
+        let shamir = ShamirProtocol::new(3, 7);
 
-        shamier.generate_shares(Fq::from(62));
+        shamir.generate_shares(Fq::from(62));
 
-        let secret = shamier.reconstruct_secret(&vec![
+        let secret = shamir.reconstruct_secret(&vec![
             (Fq::from(0), Fq::from(15)),
             (Fq::from(1), Fq::from(91)),
         ]);
@@ -109,11 +109,11 @@ mod test {
 
     #[test]
     pub fn test_reconstruct_secret_enough_but_wrong() {
-        let shamier = ShamierProtocol::new(3, 7);
+        let shamir = ShamirProtocol::new(3, 7);
 
-        shamier.generate_shares(Fq::from(62));
+        shamir.generate_shares(Fq::from(62));
 
-        let secret = shamier.reconstruct_secret(&vec![
+        let secret = shamir.reconstruct_secret(&vec![
             (Fq::from(0), Fq::from(15)),
             (Fq::from(1), Fq::from(91)),
             (Fq::from(3), Fq::from(15)),
@@ -125,11 +125,11 @@ mod test {
     #[test]
     pub fn test_reconstruct_secret_enough_and_right() {
         let secret = Fq::from(62);
-        let shamier = ShamierProtocol::new(3, 7);
+        let shamir = ShamirProtocol::new(3, 7);
 
-        let shares = shamier.generate_shares(secret.clone());
+        let shares = shamir.generate_shares(secret.clone());
 
-        let regenerated_secret = shamier.reconstruct_secret(&shares);
+        let regenerated_secret = shamir.reconstruct_secret(&shares);
 
         assert_eq!(regenerated_secret, Ok(secret));
     }
