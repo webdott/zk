@@ -1,27 +1,20 @@
-use ark_ff::PrimeField;
-
-enum Operation {
+pub enum Operation {
     Add,
     Mul,
 }
 
 pub struct Gate {
-    left: usize,
-    right: usize,
-    output: usize,
-    operation: Operation,
+    pub left: usize,
+    pub right: usize,
+    pub operation: Operation,
 }
 
-pub struct Circuit<T: PrimeField> {
-    layer_values: Vec<T>,
-    layer_gates: Vec<Gate>,
-}
-
-impl<T: PrimeField> Circuit<T> {
-    pub fn new(layer_values: Vec<T>, layer_gates: Vec<Gate>) -> Self {
+impl Gate {
+    pub fn new(left: usize, right: usize, operation: Operation) -> Self {
         Self {
-            layer_values,
-            layer_gates,
+            left,
+            right,
+            operation,
         }
     }
 }
