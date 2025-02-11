@@ -1,4 +1,5 @@
 use crate::concepts_protocols::arithmetic_gate::gate::{Gate, Operation};
+use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
 
@@ -15,21 +16,28 @@ impl<T: PrimeField> Circuit<T> {
         }
     }
 
-    pub fn evaluate(&self, inputs: Vec<T>) -> Vec<T> {
-        self.layers.iter().fold(inputs, |inputs, gates| {
-            let mut next_inputs: Vec<T> = Vec::with_capacity(inputs.len());
+    pub fn evaluate(&self, inputs: Vec<T>) -> Vec<MultiLinearPolynomial<T>> {
+        let mut evaluation_layers = vec![MultiLinearPolynomial::new(inputs.clone())];
+        let mut running_inputs = inputs;
+
+        self.layers.iter().for_each(|gates| {
+            let mut next_inputs: Vec<T> = vec![];
 
             gates.iter().for_each(|gate| {
                 let output = match gate.operation {
-                    Operation::Add => inputs[gate.left] + inputs[gate.right],
-                    Operation::Mul => inputs[gate.left] * inputs[gate.right],
+                    Operation::Add => running_inputs[gate.left] + running_inputs[gate.right],
+                    Operation::Mul => running_inputs[gate.left] * running_inputs[gate.right],
                 };
 
                 next_inputs.push(output);
             });
 
-            next_inputs
-        })
+            evaluation_layers.push(MultiLinearPolynomial::new(next_inputs.clone()));
+            running_inputs = next_inputs;
+        });
+
+        println!("Evaluation of layers {:?}", evaluation_layers);
+        evaluation_layers
     }
 }
 
@@ -51,6 +59,9 @@ mod tests {
         let eval_output =
             circuit.evaluate(vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]);
 
-        assert_eq!(eval_output, vec![Fq::from(15)]);
+        assert_eq!(
+            *eval_output.last().unwrap().get_evaluation_points(),
+            vec![Fq::from(15)]
+        );
     }
 }
