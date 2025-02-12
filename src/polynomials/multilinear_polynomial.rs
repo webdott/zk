@@ -2,6 +2,8 @@ use ark_ff::{BigInteger, PrimeField};
 use bincode::serialize;
 use std::iter;
 
+use crate::concepts_protocols::arithmetic_gate::gate::Operation;
+
 #[derive(Debug, Clone)]
 pub struct MultiLinearPolynomial<T: PrimeField> {
     evaluation_points: Vec<T>,
@@ -111,6 +113,44 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
     pub fn evaluation_sum(&self) -> T {
         self.evaluation_points.iter().sum()
     }
+
+    fn operate_w(
+        w_b: &MultiLinearPolynomial<T>,
+        w_c: &MultiLinearPolynomial<T>,
+        operation: Operation,
+    ) -> MultiLinearPolynomial<T> {
+        let (evals_b, evals_c) = (w_b.get_evaluation_points(), w_c.get_evaluation_points());
+        let (w_b_len, w_c_len) = (evals_b.len(), evals_c.len());
+        let result_evaluation_length = w_b_len * w_c_len;
+        let mut result_eval_points = vec![T::from(0); result_evaluation_length];
+
+        vec![0; result_evaluation_length]
+            .iter()
+            .enumerate()
+            .for_each(|(i, _)| {
+                let (idx_b, idx_c) = ((i / w_b_len), i % w_c_len);
+
+                match operation {
+                    Operation::Add => {
+                        result_eval_points[i] = evals_b[idx_b] + evals_c[idx_c];
+                    }
+                    Operation::Mul => result_eval_points[i] = evals_b[idx_b] * evals_c[idx_c],
+                }
+            });
+
+        Self::new(result_eval_points)
+    }
+
+    pub fn w_add(
+        w_b: &MultiLinearPolynomial<T>,
+        w_c: &MultiLinearPolynomial<T>,
+    ) -> MultiLinearPolynomial<T> {
+        Self::operate_w(w_b, w_c, Operation::Add)
+    }
+
+    pub fn w_mul(&self, other: &MultiLinearPolynomial<T>) -> MultiLinearPolynomial<T> {
+        Self::operate_w(other, self, Operation::Mul)
+    }
 }
 
 #[cfg(test)]
@@ -208,6 +248,58 @@ mod test {
             mlp.evaluate(vec![None, None, Some(Fq::from(3))])
                 .evaluation_points,
             vec![Fq::from(0), Fq::from(9), Fq::from(0), Fq::from(11)],
+        );
+    }
+
+    #[test]
+    pub fn test_operation_ws() {
+        let (w_b, w_c) = (
+            MultiLinearPolynomial::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)]),
+            MultiLinearPolynomial::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]),
+        );
+
+        assert_eq!(
+            *MultiLinearPolynomial::w_add(&w_b, &w_c).get_evaluation_points(),
+            vec![
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(2),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(2),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(2),
+                Fq::from(3),
+                Fq::from(3),
+                Fq::from(3),
+                Fq::from(5)
+            ]
+        );
+
+        assert_eq!(
+            *MultiLinearPolynomial::w_mul(&w_b, &w_c).get_evaluation_points(),
+            vec![
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(6)
+            ]
         );
     }
 }
