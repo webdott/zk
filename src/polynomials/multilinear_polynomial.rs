@@ -1,5 +1,4 @@
 use ark_ff::{BigInteger, PrimeField};
-use bincode::serialize;
 use std::iter;
 
 use crate::concepts_protocols::arithmetic_gate::gate::Operation;
@@ -100,14 +99,13 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
 
     pub fn to_bytes(&self) -> Vec<u8> {
         // Convert evaluation points to a serializable format (e.g., bytes)
-        let serializable_points: Vec<Vec<u8>> = self
+        let serializable_points: Vec<u8> = self
             .evaluation_points
             .iter()
-            .map(|point| point.into_bigint().to_bytes_le())
+            .flat_map(|point| point.into_bigint().to_bytes_le())
             .collect();
 
-        // Serialize the serializable format
-        serialize(&serializable_points).expect("Serialization of Multilinear struct failed")
+        serializable_points
     }
 
     pub fn evaluation_sum(&self) -> T {

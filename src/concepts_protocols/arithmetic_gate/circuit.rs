@@ -42,14 +42,6 @@ impl<T: PrimeField> Circuit<T> {
         self.layer_evaluations = evaluation_layers;
     }
 
-    pub fn w_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
-        if layer_idx >= self.layer_evaluations.len() {
-            panic!("layer index out of bounds");
-        }
-
-        self.layer_evaluations[self.layer_evaluations.len() - layer_idx - 1].clone()
-    }
-
     fn get_bit_idx(
         &self,
         output_idx: usize,
@@ -112,6 +104,14 @@ impl<T: PrimeField> Circuit<T> {
         });
 
         MultiLinearPolynomial::new(evaluation_points)
+    }
+
+    pub fn w_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
+        if layer_idx >= self.layer_evaluations.len() {
+            panic!("layer index out of bounds");
+        }
+
+        self.layer_evaluations[self.layer_evaluations.len() - layer_idx - 1].clone()
     }
 
     pub fn add_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {

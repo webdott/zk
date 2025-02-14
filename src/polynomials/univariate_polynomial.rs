@@ -1,4 +1,4 @@
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
 use std::{cmp, mem};
 
 #[derive(Debug)]
@@ -22,6 +22,10 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
         }
 
         result
+    }
+
+    pub fn evaluate_sum_over_boolean_hypercube(&self) -> T {
+        self.evaluate(T::from(0)) + self.evaluate(T::from(1))
     }
 
     // Given a specific list of points, find the original polynomial
@@ -125,6 +129,17 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
         UnivariatePolynomial {
             coefficients: coefs,
         }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        // Convert evaluation points to a serializable format (e.g., bytes)
+        let serializable_points: Vec<u8> = self
+            .coefficients
+            .iter()
+            .flat_map(|point| point.into_bigint().to_bytes_le())
+            .collect();
+
+        serializable_points
     }
 }
 
