@@ -256,12 +256,8 @@ impl<T: PrimeField> Verifier<T> {
 
 #[cfg(test)]
 mod test {
-    use crate::concepts_protocols::fiat_shamir::transcript::Transcript;
-    use crate::concepts_protocols::sumcheck::sumcheck_protocol::{Prover, SumCheckProof, Verifier};
-    use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
+    use super::*;
     use crate::polynomials::product_polynomial::ProductPolynomial;
-    use crate::polynomials::sum_polynomial::SumPolynomial;
-    use crate::polynomials::univariate_polynomial::UnivariatePolynomial;
     use ark_bn254::Fq;
 
     #[test]
