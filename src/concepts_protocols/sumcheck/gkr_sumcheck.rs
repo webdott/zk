@@ -48,19 +48,16 @@ pub fn get_folded_poly_and_claimed_sum<T: PrimeField>(
 
 #[derive(Debug)]
 pub struct GKRProof<T: PrimeField> {
-    pub initial_inputs: Vec<T>,
     pub w_polys: Vec<MultiLinearPolynomial<T>>,
     pub sumcheck_proofs: Vec<SumCheckProof<T>>,
 }
 
 impl<T: PrimeField> GKRProof<T> {
     pub fn new(
-        initial_inputs: Vec<T>,
         w_polys: Vec<MultiLinearPolynomial<T>>,
         sumcheck_proofs: Vec<SumCheckProof<T>>,
     ) -> Self {
         Self {
-            initial_inputs,
             w_polys,
             sumcheck_proofs,
         }
@@ -154,7 +151,7 @@ impl<T: PrimeField> GKRProver<T> {
             sum_check_proofs.push(sumcheck_proof);
         });
 
-        GKRProof::new(Vec::from(inputs), w_polys, sum_check_proofs)
+        GKRProof::new(w_polys, sum_check_proofs)
     }
 }
 
@@ -164,6 +161,7 @@ pub struct GKRVerifier<T: PrimeField> {
 
 impl<T: PrimeField> GKRVerifier<T> {
     pub fn verify_proof(
+        initial_inputs: &[T],
         circuit: &mut Circuit<T>,
         transcript: &mut Transcript<T>,
         proof: GKRProof<T>,
@@ -202,7 +200,7 @@ impl<T: PrimeField> GKRVerifier<T> {
             );
 
             let next_w_i = if layer_idx + 1 >= proof.w_polys.len() {
-                &MultiLinearPolynomial::new(proof.initial_inputs.clone())
+                &MultiLinearPolynomial::new(Vec::from(initial_inputs))
             } else {
                 &proof.w_polys[layer_idx + 1]
             };
@@ -280,6 +278,7 @@ mod tests {
             GKRProver::generate_proof(&mut circuit.clone(), &mut Transcript::new(), &inputs);
 
         assert!(GKRVerifier::verify_proof(
+            &inputs,
             &mut circuit,
             &mut Transcript::new(),
             gkr_proof
