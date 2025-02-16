@@ -1,2 +1,2 @@
-mod gkr_sumcheck;
-mod sumcheck_protocol;
+pub mod gkr_sumcheck;
+pub mod sumcheck_protocol;

@@ -14,51 +14,59 @@ pub enum ComposedPolynomial<T: PrimeField> {
 #[derive(Debug)]
 pub struct SumCheckProof<T: PrimeField> {
     initial_claim_sum: T,
-    round_polys: Vec<UnivariatePolynomial<T>>,
+    pub round_polys: Vec<UnivariatePolynomial<T>>,
 }
 
-pub struct Prover<T: PrimeField> {
+pub struct SumcheckProver<T: PrimeField> {
     _marker: PhantomData<T>,
 }
 
-impl<T: PrimeField> Prover<T> {
+impl<T: PrimeField> SumcheckProver<T> {
     // this generates a set of points to partially evaluate a polynomial
     fn generate_evaluation_points(
         transcript: &mut Transcript<T>,
         variables_length: usize,
-    ) -> Vec<Option<T>> {
-        iter::repeat(())
-            .enumerate()
-            .map(|(idx, _x)| {
-                if idx == 0 {
-                    return Some(transcript.sample_challenge());
-                }
+    ) -> (T, Vec<Option<T>>) {
+        let sample_challenge = transcript.sample_challenge();
 
-                return None;
-            })
-            .take(variables_length)
-            .collect()
+        (
+            sample_challenge.clone(),
+            iter::repeat(())
+                .enumerate()
+                .map(|(idx, _x)| {
+                    if idx == 0 {
+                        return Some(sample_challenge);
+                    }
+
+                    return None;
+                })
+                .take(variables_length)
+                .collect(),
+        )
     }
 
     fn generate_round_polys(
         initial_polynomial: &ComposedPolynomial<T>,
         transcript: &mut Transcript<T>,
-    ) -> Vec<UnivariatePolynomial<T>> {
+    ) -> (Vec<UnivariatePolynomial<T>>, Vec<T>) {
         let (
             mut resulting_multi_polynomial,
             mut resulting_sum_polynomial,
             mut round_polys,
+            mut random_challenges,
             number_of_variables,
         ) = match initial_polynomial {
             ComposedPolynomial::SumPolynomial(polynomial) => (
                 None,
                 Some(polynomial.clone()),
                 Vec::with_capacity(polynomial.number_of_variables() as usize),
+                Vec::with_capacity(polynomial.number_of_variables() as usize),
                 polynomial.number_of_variables(),
             ),
             ComposedPolynomial::MultilinearPolynomial(polynomial) => (
                 Some(polynomial.clone()),
                 None,
+                Vec::with_capacity(polynomial.number_of_variables() as usize),
                 Vec::with_capacity(polynomial.number_of_variables() as usize),
                 polynomial.number_of_variables(),
             ),
@@ -84,13 +92,12 @@ impl<T: PrimeField> Prover<T> {
                     evaluation_points[i] = res.iter().sum();
                 }
 
+                claimed_sum = evaluation_points[0] + evaluation_points[1];
+
                 evaluated_polynomial_over_boolean_hypercube = UnivariatePolynomial::interpolate(
                     vec![T::from(0), T::from(1), T::from(2)],
                     evaluation_points,
                 );
-
-                claimed_sum = evaluated_polynomial_over_boolean_hypercube
-                    .evaluate_sum_over_boolean_hypercube();
             } else if let Some(multi_poly) = &resulting_multi_polynomial {
                 let evaluation_points = multi_poly.get_evaluation_points();
                 let (first_half, second_half) =
@@ -113,23 +120,29 @@ impl<T: PrimeField> Prover<T> {
             transcript.append(&evaluated_polynomial_over_boolean_hypercube.to_bytes());
 
             if let Some(sum_poly) = &resulting_sum_polynomial {
-                let points = Self::generate_evaluation_points(
+                let (challenge, points) = Self::generate_evaluation_points(
                     transcript,
                     sum_poly.number_of_variables() as usize,
                 );
+
+                random_challenges.push(challenge);
+
                 resulting_sum_polynomial = Some(sum_poly.partial_evaluate(&points));
             } else if let Some(multi_poly) = &resulting_multi_polynomial {
-                let points = Self::generate_evaluation_points(
+                let (challenge, points) = Self::generate_evaluation_points(
                     transcript,
                     multi_poly.number_of_variables() as usize,
                 );
+
+                random_challenges.push(challenge);
+
                 resulting_multi_polynomial = Some(multi_poly.evaluate(points));
             }
 
             round_polys.push(evaluated_polynomial_over_boolean_hypercube);
         });
 
-        round_polys
+        (round_polys, random_challenges)
     }
 
     // This creates a sum check proof struct that with the round_polys generated and an initial claim sum
@@ -139,7 +152,7 @@ impl<T: PrimeField> Prover<T> {
         // append initial polynomial to transcript to initiate process
         transcript.append(&init_polynomial.to_bytes());
 
-        let round_polys = Self::generate_round_polys(
+        let (round_polys, _) = Self::generate_round_polys(
             &ComposedPolynomial::MultilinearPolynomial(init_polynomial.clone()),
             &mut transcript,
         );
@@ -153,24 +166,26 @@ impl<T: PrimeField> Prover<T> {
     pub fn generate_proof_for_partial_verify(
         initial_claim_sum: T,
         init_poly: SumPolynomial<T>,
-    ) -> SumCheckProof<T> {
-        let round_polys = Self::generate_round_polys(
-            &ComposedPolynomial::SumPolynomial(init_poly),
-            &mut Transcript::new(),
-        );
+        transcript: &mut Transcript<T>,
+    ) -> (SumCheckProof<T>, Vec<T>) {
+        let (round_polys, random_points) =
+            Self::generate_round_polys(&ComposedPolynomial::SumPolynomial(init_poly), transcript);
 
-        SumCheckProof {
-            initial_claim_sum,
-            round_polys,
-        }
+        (
+            SumCheckProof {
+                initial_claim_sum,
+                round_polys,
+            },
+            random_points,
+        )
     }
 }
 
-struct Verifier<T: PrimeField> {
+pub struct SumcheckVerifier<T: PrimeField> {
     _marker: PhantomData<T>,
 }
 
-impl<T: PrimeField> Verifier<T> {
+impl<T: PrimeField> SumcheckVerifier<T> {
     // This check ensures that the last univariate evaluated at a variable is equal to the initial polynomial evaluated at all sampled values
     pub fn perform_oracle_check(
         initial_polynomial: &MultiLinearPolynomial<T>,
@@ -275,9 +290,12 @@ mod test {
 
         let initial_polynomial = MultiLinearPolynomial::new(polynomial);
 
-        let sum_check_proof = Prover::generate_sumcheck_proof(&initial_polynomial);
+        let sum_check_proof = SumcheckProver::generate_sumcheck_proof(&initial_polynomial);
 
-        assert!(Verifier::verify_proof(&initial_polynomial, sum_check_proof));
+        assert!(SumcheckVerifier::verify_proof(
+            &initial_polynomial,
+            sum_check_proof
+        ));
     }
 
     #[test]
@@ -303,7 +321,10 @@ mod test {
         };
 
         assert_eq!(
-            Verifier::verify_proof(&MultiLinearPolynomial::new(polynomial), sum_check_proof),
+            SumcheckVerifier::verify_proof(
+                &MultiLinearPolynomial::new(polynomial),
+                sum_check_proof
+            ),
             false
         );
     }
@@ -326,9 +347,12 @@ mod test {
             ]),
         ]);
 
-        let sum_check_proof =
-            Prover::generate_proof_for_partial_verify(Fq::from(12), initial_polynomial);
+        let (sum_check_proof, _) = SumcheckProver::generate_proof_for_partial_verify(
+            Fq::from(12),
+            initial_polynomial,
+            &mut Transcript::new(),
+        );
 
-        assert!(Verifier::partial_verify(&sum_check_proof, &mut Transcript::new()).0);
+        assert!(SumcheckVerifier::partial_verify(&sum_check_proof, &mut Transcript::new()).0);
     }
 }

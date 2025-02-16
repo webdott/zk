@@ -82,7 +82,6 @@ impl<T: PrimeField> SumPolynomial<T> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn product_polynomial() {
-        todo!()
-    }
+    #[should_panic]
+    fn product_polynomial_creation() {}
 }

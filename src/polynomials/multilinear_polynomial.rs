@@ -19,6 +19,10 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         Self { evaluation_points }
     }
 
+    pub fn scalar_mul(&self, scalar: T) -> Self {
+        Self::new(self.evaluation_points.iter().map(|e| *e * scalar).collect())
+    }
+
     pub fn get_evaluation_points(&self) -> &Vec<T> {
         &self.evaluation_points
     }
@@ -137,6 +141,21 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
             });
 
         Self::new(result_eval_points)
+    }
+
+    pub fn add(&self, other: &MultiLinearPolynomial<T>) -> Self {
+        if self.number_of_variables() != other.number_of_variables() {
+            panic!("Polynomial must have the same length");
+        };
+
+        let mut new_evals = vec![T::from(0); other.evaluation_points.len()];
+
+        (0..self.evaluation_points.len()).for_each(|idx| {
+            new_evals[idx] +=
+                self.get_evaluation_points()[idx] + other.get_evaluation_points()[idx];
+        });
+
+        Self::new(new_evals)
     }
 
     pub fn w_add(

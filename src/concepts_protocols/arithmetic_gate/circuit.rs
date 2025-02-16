@@ -1,9 +1,11 @@
 use crate::concepts_protocols::arithmetic_gate::gate::{Gate, Operation};
 use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
 use ark_ff::PrimeField;
+use std::cmp::max;
 
 use std::marker::PhantomData;
 
+#[derive(Clone)]
 pub struct Circuit<T: PrimeField> {
     _marker: PhantomData<T>,
     layers: Vec<Vec<Gate>>,
@@ -19,27 +21,36 @@ impl<T: PrimeField> Circuit<T> {
         }
     }
 
-    pub fn evaluate(&mut self, inputs: Vec<T>) {
+    pub fn get_layer_count(&self) -> usize {
+        self.layers.len()
+    }
+
+    pub fn evaluate(&mut self, inputs: Vec<T>) -> MultiLinearPolynomial<T> {
         let mut evaluation_layers = vec![MultiLinearPolynomial::new(inputs.clone())];
         let mut running_inputs = inputs;
 
         self.layers.iter().for_each(|gates| {
-            let mut next_inputs: Vec<T> = vec![];
+            let mut next_inputs: Vec<T> =
+                vec![T::from(0); max(gates.len().next_power_of_two(), 2) as usize];
 
-            gates.iter().for_each(|gate| {
+            gates.iter().enumerate().for_each(|(idx, gate)| {
                 let output = match gate.operation {
                     Operation::Add => running_inputs[gate.left] + running_inputs[gate.right],
                     Operation::Mul => running_inputs[gate.left] * running_inputs[gate.right],
                 };
 
-                next_inputs.push(output);
+                next_inputs[idx] = output;
             });
 
             evaluation_layers.push(MultiLinearPolynomial::new(next_inputs.clone()));
             running_inputs = next_inputs;
         });
 
+        let output_polynomial = evaluation_layers.last().unwrap().clone();
+
         self.layer_evaluations = evaluation_layers;
+
+        output_polynomial
     }
 
     fn get_bit_idx(
@@ -106,7 +117,7 @@ impl<T: PrimeField> Circuit<T> {
         MultiLinearPolynomial::new(evaluation_points)
     }
 
-    pub fn w_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
+    pub fn get_w_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
         if layer_idx >= self.layer_evaluations.len() {
             panic!("layer index out of bounds");
         }
@@ -114,11 +125,11 @@ impl<T: PrimeField> Circuit<T> {
         self.layer_evaluations[self.layer_evaluations.len() - layer_idx - 1].clone()
     }
 
-    pub fn add_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
+    pub fn get_add_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
         self.get_gate_poly(layer_idx, Operation::Add)
     }
 
-    pub fn mul_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
+    pub fn get_mul_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
         self.get_gate_poly(layer_idx, Operation::Mul)
     }
 }
@@ -157,22 +168,22 @@ mod tests {
     }
 
     #[test]
-    pub fn test_add_i() {
+    pub fn test_get_add_i() {
         let circuit = init_circuit_and_evaluate();
 
         let mut result_vec = vec![Fq::from(0); 32];
         result_vec[1] = Fq::from(1);
 
-        assert_eq!(*circuit.add_i(1).get_evaluation_points(), result_vec);
+        assert_eq!(*circuit.get_add_i(1).get_evaluation_points(), result_vec);
     }
 
     #[test]
-    pub fn test_mul_i() {
+    pub fn test_get_mul_i() {
         let circuit = init_circuit_and_evaluate();
 
         let mut result_vec = vec![Fq::from(0); 32];
         result_vec[27] = Fq::from(1);
 
-        assert_eq!(*circuit.mul_i(1).get_evaluation_points(), result_vec);
+        assert_eq!(*circuit.get_mul_i(1).get_evaluation_points(), result_vec);
     }
 }

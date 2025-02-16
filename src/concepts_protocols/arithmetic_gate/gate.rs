@@ -1,10 +1,10 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Operation {
     Add,
     Mul,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Gate {
     pub left: usize,
     pub right: usize,
