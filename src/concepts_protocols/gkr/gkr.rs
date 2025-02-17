@@ -10,7 +10,7 @@ use ark_ff::PrimeField;
 use std::marker::PhantomData;
 
 pub fn get_folded_poly_and_claimed_sum<T: PrimeField>(
-    w_poly: MultiLinearPolynomial<T>,
+    w_poly: &MultiLinearPolynomial<T>,
     muli_a_b_c: MultiLinearPolynomial<T>,
     addi_a_b_c: MultiLinearPolynomial<T>,
     r_b: &[Option<T>],
@@ -118,7 +118,7 @@ impl<T: PrimeField> GKRProver<T> {
             let addi_a_b_c = circuit.get_add_i(layer_idx);
 
             let (claim_sum, new_muli_b_c, new_addi_b_c) = get_folded_poly_and_claimed_sum(
-                running_polynomial.clone(),
+                &running_polynomial,
                 muli_a_b_c,
                 addi_a_b_c,
                 &random_values[0..random_values.len() / 2],
@@ -139,11 +139,8 @@ impl<T: PrimeField> GKRProver<T> {
                 ]),
             ]);
 
-            let (sumcheck_proof, random_points) = SumcheckProver::generate_proof_for_partial_verify(
-                claim_sum,
-                f_b_c.clone(),
-                transcript,
-            );
+            let (sumcheck_proof, random_points) =
+                SumcheckProver::generate_proof_for_partial_verify(claim_sum, f_b_c, transcript);
 
             random_values = random_points.iter().map(|point| Some(*point)).collect();
             running_polynomial = circuit.get_w_i(layer_idx + 1);
@@ -191,7 +188,7 @@ impl<T: PrimeField> GKRVerifier<T> {
             let addi_a_b_c = circuit.get_add_i(layer_idx);
 
             let (_claim_sum, new_muli_b_c, new_addi_b_c) = get_folded_poly_and_claimed_sum(
-                running_polynomial.clone(),
+                &running_polynomial,
                 muli_a_b_c,
                 addi_a_b_c,
                 &random_values[0..random_values.len() / 2],
@@ -218,12 +215,6 @@ impl<T: PrimeField> GKRVerifier<T> {
 
             let (is_verified, final_claim_sum, next_evaluation_values) =
                 SumcheckVerifier::partial_verify(&proof.sumcheck_proofs[layer_idx], transcript);
-
-            // println!(
-            //     "{:?} {:?}",
-            //     f_b_c.evaluate(&next_evaluation_values),
-            //     final_claim_sum
-            // );
 
             if !is_verified || (f_b_c.evaluate(&next_evaluation_values) != final_claim_sum) {
                 return false;
