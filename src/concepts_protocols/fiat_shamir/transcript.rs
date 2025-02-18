@@ -28,6 +28,10 @@ impl<T: PrimeField> Transcript<T> {
         self.append(&hash_result);
         T::from_le_bytes_mod_order(&hash_result)
     }
+
+    pub fn sample_n_challenges(&mut self, n: usize) -> Vec<T> {
+        (0..n).map(|_| self.sample_challenge()).collect()
+    }
 }
 
 pub struct GenericTranscript<T: PrimeField, F: GenericHashFunctionTrait> {

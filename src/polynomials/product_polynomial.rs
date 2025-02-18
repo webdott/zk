@@ -27,10 +27,6 @@ impl<T: PrimeField> ProductPolynomial<T> {
         Self::get_poly_length(&self.polys)
     }
 
-    pub fn get_multi_polys(&self) -> &Vec<MultiLinearPolynomial<T>> {
-        &self.polys
-    }
-
     pub fn partial_evaluate(&self, t: &[Option<T>]) -> Self {
         let new_polys = self.polys.iter().map(|poly| poly.evaluate(Vec::from(t)));
 

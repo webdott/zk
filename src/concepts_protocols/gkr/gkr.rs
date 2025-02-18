@@ -98,16 +98,7 @@ impl<T: PrimeField> GKRProver<T> {
             Vec::with_capacity(circuit.get_layer_count()),
         );
 
-        // NOTE: For the first layer (output), *WE DO NOT NECESSARILY NEED TO PERFORM ALPHA-BETA FOLDING*
-        //     - You can just absorb the output polynomial, and squeeze one random (r) value to evaluate the polynomial at. This would give you first claim sum.
-        //     - I only performed a-b folding for all layers to have a uniform way of getting claim sum and fbc for each level -> (skill issue),
-        let length_of_rs = circuit
-            .get_w_i(0)
-            .get_evaluation_points()
-            .len()
-            .next_power_of_two()
-            .ilog2()
-            * 2;
+        let length_of_rs = circuit.get_w_i(0).number_of_variables();
 
         // This variable stores the w_poly for each layer
         let mut running_layer_polynomial = circuit.get_w_i(0);
@@ -115,14 +106,14 @@ impl<T: PrimeField> GKRProver<T> {
         // Commit to the output layer poly by appending to the transcript
         transcript.append(&running_layer_polynomial.to_bytes());
 
-        let mut random_values = vec![];
-
         // generate a number of rs for to evaluate the output layer depending on the number of outputs of the circuit.
-        (0..length_of_rs).for_each(|_i| {
-            random_values.push(Some(transcript.sample_challenge()));
-        });
+        let mut random_values: Vec<Option<T>> = transcript
+            .sample_n_challenges(length_of_rs as usize)
+            .into_iter()
+            .map(|challenge| Some(challenge))
+            .collect();
 
-        (0..circuit.get_layer_count()).for_each(|layer_idx| {
+        for layer_idx in 0..circuit.get_layer_count() {
             // Prover is sending the verifier the following at each step:
             //   - W_output poly of the first layer, then just the evaluations of W_poly of the subsequent layers -> Perform alpha beta folding if more than one output to form one output poly
             //   - Intermediate Sumcheck proof
@@ -131,36 +122,65 @@ impl<T: PrimeField> GKRProver<T> {
             let (muli_a_b_c, addi_a_b_c) =
                 (circuit.get_mul_i(layer_idx), circuit.get_add_i(layer_idx));
 
-            let (r_b, r_c) = (
-                &random_values[0..random_values.len() / 2],
-                &random_values[random_values.len() / 2..],
-            );
+            let (claim_sum, new_muli_b_c, new_addi_b_c) = match layer_idx {
+                0 => {
+                    let mut evaluation_points = random_values.clone();
 
-            let evaluated_running_b_poly = running_layer_polynomial.evaluate(Vec::from(r_b));
-            let evaluated_running_c_poly = running_layer_polynomial.evaluate(Vec::from(r_c));
+                    evaluation_points.extend(vec![
+                        None;
+                        (muli_a_b_c.number_of_variables() as usize)
+                            - random_values.len()
+                    ]);
 
-            let (w_i_b_eval, w_i_c_eval) = (
-                evaluated_running_b_poly
-                    .get_evaluation_points()
-                    .first()
-                    .unwrap(),
-                evaluated_running_c_poly
-                    .get_evaluation_points()
-                    .first()
-                    .unwrap(),
-            );
+                    (
+                        running_layer_polynomial
+                            .evaluate(random_values)
+                            .get_evaluation_points()
+                            .first()
+                            .unwrap()
+                            .clone(),
+                        muli_a_b_c.evaluate(evaluation_points.clone()),
+                        addi_a_b_c.evaluate(evaluation_points),
+                    )
+                }
+                _ => {
+                    let (r_b, r_c) = (
+                        &random_values[0..random_values.len() / 2],
+                        &random_values[random_values.len() / 2..],
+                    );
 
-            let (alpha, beta) = (transcript.sample_challenge(), transcript.sample_challenge());
+                    let evaluated_running_b_poly =
+                        running_layer_polynomial.evaluate(Vec::from(r_b));
+                    let evaluated_running_c_poly =
+                        running_layer_polynomial.evaluate(Vec::from(r_c));
 
-            //  Get new claim sums, addi and muli polys, alongside evaluations of the current layer's W poly at the random challenges
-            let (new_muli_b_c, new_addi_b_c) =
-                get_folded_polys(&alpha, &beta, muli_a_b_c, addi_a_b_c, r_b, r_c);
+                    let (w_i_b_eval, w_i_c_eval) = (
+                        evaluated_running_b_poly
+                            .get_evaluation_points()
+                            .first()
+                            .unwrap(),
+                        evaluated_running_c_poly
+                            .get_evaluation_points()
+                            .first()
+                            .unwrap(),
+                    );
 
-            let claim_sum = get_folded_claim_sum(&alpha, &beta, w_i_b_eval, w_i_c_eval);
+                    let (alpha, beta) =
+                        (transcript.sample_challenge(), transcript.sample_challenge());
 
-            if layer_idx > 0 {
-                w_polys_evals.push((*w_i_b_eval, *w_i_c_eval));
-            }
+                    //  Get new claim sums, addi and muli polys, alongside evaluations of the current layer's W poly at the random challenges
+                    let (new_muli_b_c, new_addi_b_c) =
+                        get_folded_polys(&alpha, &beta, muli_a_b_c, addi_a_b_c, r_b, r_c);
+
+                    w_polys_evals.push((*w_i_b_eval, *w_i_c_eval));
+
+                    (
+                        get_folded_claim_sum(&alpha, &beta, w_i_b_eval, w_i_c_eval),
+                        new_muli_b_c,
+                        new_addi_b_c,
+                    )
+                }
+            };
 
             let next_w_i = circuit.get_w_i(layer_idx + 1);
 
@@ -184,7 +204,7 @@ impl<T: PrimeField> GKRProver<T> {
             running_layer_polynomial = circuit.get_w_i(layer_idx + 1);
 
             sum_check_proofs.push(sumcheck_proof);
-        });
+        }
 
         GKRProof::new(circuit.get_w_i(0), w_polys_evals, sum_check_proofs)
     }
@@ -202,41 +222,56 @@ impl<T: PrimeField> GKRVerifier<T> {
         proof: GKRProof<T>,
     ) -> bool {
         // performs the same step as prover in output poly
-        let length_of_rs = proof
-            .output_poly
-            .get_evaluation_points()
-            .len()
-            .next_power_of_two()
-            .ilog2()
-            * 2;
+        let length_of_rs = proof.output_poly.number_of_variables();
 
         transcript.append(&proof.output_poly.to_bytes());
 
-        let mut random_values = vec![];
-
-        (0..length_of_rs).for_each(|_i| {
-            random_values.push(Some(transcript.sample_challenge()));
-        });
+        let mut random_values: Vec<Option<T>> = transcript
+            .sample_n_challenges(length_of_rs as usize)
+            .into_iter()
+            .map(|challenge| Some(challenge))
+            .collect();
 
         for layer_idx in 0..circuit.get_layer_count() {
-            let (alpha, beta) = (transcript.sample_challenge(), transcript.sample_challenge());
+            let muli_a_b_c = circuit.get_mul_i(layer_idx);
+            let addi_a_b_c = circuit.get_add_i(layer_idx);
+
+            let (new_muli_b_c, new_addi_b_c) = match layer_idx {
+                0 => {
+                    let mut evaluation_points = random_values.clone();
+
+                    evaluation_points.extend(vec![
+                        None;
+                        (muli_a_b_c.number_of_variables() as usize)
+                            - random_values.len()
+                    ]);
+
+                    (
+                        muli_a_b_c.evaluate(evaluation_points.clone()),
+                        addi_a_b_c.evaluate(evaluation_points),
+                    )
+                }
+                _ => {
+                    let (alpha, beta) =
+                        (transcript.sample_challenge(), transcript.sample_challenge());
+
+                    // Get the new addi's and muli's using alpha beta folding.
+                    let (new_muli_b_c, new_addi_b_c) = get_folded_polys(
+                        &alpha,
+                        &beta,
+                        muli_a_b_c,
+                        addi_a_b_c,
+                        &random_values[0..random_values.len() / 2],
+                        &random_values[random_values.len() / 2..],
+                    );
+
+                    (new_muli_b_c, new_addi_b_c)
+                }
+            };
 
             // Partial verifier checks if partial proof is correct and returns final claim sum and next r values in the process
             let (is_verified, final_claim_sum, next_evaluation_values) =
                 SumcheckVerifier::partial_verify(&proof.sumcheck_proofs[layer_idx], transcript);
-
-            let muli_a_b_c = circuit.get_mul_i(layer_idx);
-            let addi_a_b_c = circuit.get_add_i(layer_idx);
-
-            // Get the new addi's and muli's using alpha beta folding.
-            let (new_muli_b_c, new_addi_b_c) = get_folded_polys(
-                &alpha,
-                &beta,
-                muli_a_b_c,
-                addi_a_b_c,
-                &random_values[0..random_values.len() / 2],
-                &random_values[random_values.len() / 2..],
-            );
 
             // Using the next set of rs gotten from partial prover, we evaluate the new addi's and muli's
             let evaluated_addi_b_c = new_addi_b_c.evaluate(next_evaluation_values.clone());
