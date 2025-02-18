@@ -36,7 +36,7 @@ impl<T: PrimeField> SumPolynomial<T> {
         self.prod_polys.len()
     }
 
-    pub fn partial_evaluate(&self, t: &Vec<Option<T>>) -> Self {
+    pub fn partial_evaluate(&self, t: &[Option<T>]) -> Self {
         let new_polys = self.prod_polys.iter().map(|poly| poly.partial_evaluate(t));
 
         Self {

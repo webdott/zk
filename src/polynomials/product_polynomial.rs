@@ -31,8 +31,8 @@ impl<T: PrimeField> ProductPolynomial<T> {
         &self.polys
     }
 
-    pub fn partial_evaluate(&self, t: &Vec<Option<T>>) -> Self {
-        let new_polys = self.polys.iter().map(|poly| poly.evaluate(t.clone()));
+    pub fn partial_evaluate(&self, t: &[Option<T>]) -> Self {
+        let new_polys = self.polys.iter().map(|poly| poly.evaluate(Vec::from(t)));
 
         Self {
             polys: new_polys.collect(),

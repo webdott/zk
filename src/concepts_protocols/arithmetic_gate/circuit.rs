@@ -25,7 +25,7 @@ impl<T: PrimeField> Circuit<T> {
         self.layers.len()
     }
 
-    pub fn evaluate(&mut self, inputs: Vec<T>) -> MultiLinearPolynomial<T> {
+    pub fn evaluate_at_input(&mut self, inputs: Vec<T>) -> MultiLinearPolynomial<T> {
         let mut evaluation_layers = vec![MultiLinearPolynomial::new(inputs.clone())];
         let mut running_inputs = inputs;
 
@@ -148,7 +148,7 @@ mod tests {
             vec![Gate::new(0, 1, Operation::Add)],
         ]);
 
-        circuit.evaluate(vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]);
+        circuit.evaluate_at_input(vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]);
 
         circuit
     }

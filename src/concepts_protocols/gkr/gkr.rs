@@ -7,23 +7,31 @@ use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
 use crate::polynomials::product_polynomial::ProductPolynomial;
 use crate::polynomials::sum_polynomial::SumPolynomial;
 use ark_ff::PrimeField;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
-pub fn get_folded_poly_and_claimed_sum<T: PrimeField>(
-    w_poly: &MultiLinearPolynomial<T>,
+pub fn get_folded_claim_sum<T: PrimeField>(
+    w_i_b_eval: &T,
+    w_i_c_eval: &T,
+    alpha: &T,
+    beta: &T,
+) -> T {
+    // Follows the alpha-beta formula:
+    //    - ( alpha * (W(rb)) ) + ( beta * (W(rc)) ) => New claim sum
+    (*w_i_b_eval * *alpha) + (*w_i_c_eval * *beta)
+}
+
+pub fn get_folded_polys<T: PrimeField>(
+    alpha: &T,
+    beta: &T,
     muli_a_b_c: MultiLinearPolynomial<T>,
     addi_a_b_c: MultiLinearPolynomial<T>,
     r_b: &[Option<T>],
     r_c: &[Option<T>],
-    transcript: &mut Transcript<T>,
-) -> (T, MultiLinearPolynomial<T>, MultiLinearPolynomial<T>) {
-    let (alpha, beta) = (transcript.sample_challenge(), transcript.sample_challenge());
-
-    let w_i_b = w_poly.evaluate(Vec::from(r_b));
-    let w_i_c = w_poly.evaluate(Vec::from(r_c));
-
-    let claimed_sum = (*w_i_b.get_evaluation_points().first().unwrap() * alpha)
-        + (*w_i_c.get_evaluation_points().first().unwrap() * beta);
+) -> (MultiLinearPolynomial<T>, MultiLinearPolynomial<T>) {
+    // Follows the alpha-beta formula:
+    //    - ( alpha * muli(rb,b,c) ) + ( beta * muli(rc, b, c) ) => New mul_i poly
+    //    - ( alpha * addi(rb,b,c) ) + ( beta * addi(rc, b, c) ) => New add_i poly
 
     let mut eval_points_rb = vec![None; muli_a_b_c.number_of_variables() as usize];
     let mut eval_points_rc = vec![None; muli_a_b_c.number_of_variables() as usize];
@@ -35,30 +43,37 @@ pub fn get_folded_poly_and_claimed_sum<T: PrimeField>(
 
     let new_muli_b_c = muli_a_b_c
         .evaluate(eval_points_rb.clone())
-        .scalar_mul(alpha)
-        .add(&muli_a_b_c.evaluate(eval_points_rc.clone()).scalar_mul(beta));
+        .scalar_mul(*alpha)
+        .add(
+            &muli_a_b_c
+                .evaluate(eval_points_rc.clone())
+                .scalar_mul(*beta),
+        );
 
     let new_addi_b_c = addi_a_b_c
         .evaluate(eval_points_rb)
-        .scalar_mul(alpha)
-        .add(&addi_a_b_c.evaluate(eval_points_rc).scalar_mul(beta));
+        .scalar_mul(*alpha)
+        .add(&addi_a_b_c.evaluate(eval_points_rc).scalar_mul(*beta));
 
-    (claimed_sum, new_muli_b_c, new_addi_b_c)
+    (new_muli_b_c, new_addi_b_c)
 }
 
 #[derive(Debug)]
 pub struct GKRProof<T: PrimeField> {
-    pub w_polys: Vec<MultiLinearPolynomial<T>>,
+    pub output_poly: MultiLinearPolynomial<T>,
+    pub w_polys_evals: Vec<(T, T)>,
     pub sumcheck_proofs: Vec<SumCheckProof<T>>,
 }
 
 impl<T: PrimeField> GKRProof<T> {
     pub fn new(
-        w_polys: Vec<MultiLinearPolynomial<T>>,
+        output_poly: MultiLinearPolynomial<T>,
+        w_polys_evals: Vec<(T, T)>,
         sumcheck_proofs: Vec<SumCheckProof<T>>,
     ) -> Self {
         Self {
-            w_polys,
+            output_poly,
+            w_polys_evals,
             sumcheck_proofs,
         }
     }
@@ -69,22 +84,23 @@ pub struct GKRProver<T: PrimeField> {
 }
 
 impl<T: PrimeField> GKRProver<T> {
-    pub fn evaluate_at_input(circuit: &mut Circuit<T>, inputs: &[T]) -> MultiLinearPolynomial<T> {
-        circuit.evaluate(Vec::from(inputs))
-    }
-
     pub fn generate_proof(
         circuit: &mut Circuit<T>,
         transcript: &mut Transcript<T>,
         inputs: &[T],
     ) -> GKRProof<T> {
-        circuit.evaluate(Vec::from(inputs));
+        // Evaluate the polynomials at the inputs to be able to get w_polys on each layer
+        circuit.evaluate_at_input(Vec::from(inputs));
 
-        let (mut w_polys, mut sum_check_proofs) = (
+        // Initialize vecs to store the w_poly_evaluations and the sumcheck proofs at each step
+        let (mut w_polys_evals, mut sum_check_proofs) = (
             Vec::with_capacity(circuit.get_layer_count()),
             Vec::with_capacity(circuit.get_layer_count()),
         );
 
+        // NOTE: For the first layer (output), *WE DO NOT NECESSARILY NEED TO PERFORM ALPHA-BETA FOLDING*
+        //     - You can just absorb the output polynomial, and squeeze one random (r) value to evaluate the polynomial at. This would give you first claim sum.
+        //     - I only performed a-b folding for all layers to have a uniform way of getting claim sum and fbc for each level -> (skill issue),
         let length_of_rs = circuit
             .get_w_i(0)
             .get_evaluation_points()
@@ -93,41 +109,62 @@ impl<T: PrimeField> GKRProver<T> {
             .ilog2()
             * 2;
 
-        let mut running_polynomial = circuit.get_w_i(0);
+        // This variable stores the w_poly for each layer
+        let mut running_layer_polynomial = circuit.get_w_i(0);
 
-        transcript.append(&running_polynomial.to_bytes());
+        // Commit to the output layer poly by appending to the transcript
+        transcript.append(&running_layer_polynomial.to_bytes());
 
         let mut random_values = vec![];
 
+        // generate a number of rs for to evaluate the output layer depending on the number of outputs of the circuit.
         (0..length_of_rs).for_each(|_i| {
             random_values.push(Some(transcript.sample_challenge()));
         });
 
         (0..circuit.get_layer_count()).for_each(|layer_idx| {
-            // Things I'm sending the verifier at each step
-            //   W (output polys) -> Perform alpha beta folding if more than one output to form one output poly
-            //       pass in the output to transcript
-            //   Intermediate Sumcheck proof
-            //   Mo (Claim sum at each step -> Evaluation of output poly at random sample challenge generated by transcript)
-
+            // Prover is sending the verifier the following at each step:
+            //   - W_output poly of the first layer, then just the evaluations of W_poly of the subsequent layers -> Perform alpha beta folding if more than one output to form one output poly
+            //   - Intermediate Sumcheck proof
             // perform alpha-beta folding on W poly
 
-            w_polys.push(running_polynomial.clone());
+            let (muli_a_b_c, addi_a_b_c) =
+                (circuit.get_mul_i(layer_idx), circuit.get_add_i(layer_idx));
 
-            let muli_a_b_c = circuit.get_mul_i(layer_idx);
-            let addi_a_b_c = circuit.get_add_i(layer_idx);
-
-            let (claim_sum, new_muli_b_c, new_addi_b_c) = get_folded_poly_and_claimed_sum(
-                &running_polynomial,
-                muli_a_b_c,
-                addi_a_b_c,
+            let (r_b, r_c) = (
                 &random_values[0..random_values.len() / 2],
                 &random_values[random_values.len() / 2..],
-                transcript,
             );
+
+            let evaluated_running_b_poly = running_layer_polynomial.evaluate(Vec::from(r_b));
+            let evaluated_running_c_poly = running_layer_polynomial.evaluate(Vec::from(r_c));
+
+            let (w_i_b_eval, w_i_c_eval) = (
+                evaluated_running_b_poly
+                    .get_evaluation_points()
+                    .first()
+                    .unwrap(),
+                evaluated_running_c_poly
+                    .get_evaluation_points()
+                    .first()
+                    .unwrap(),
+            );
+
+            let (alpha, beta) = (transcript.sample_challenge(), transcript.sample_challenge());
+
+            //  Get new claim sums, addi and muli polys, alongside evaluations of the current layer's W poly at the random challenges
+            let (new_muli_b_c, new_addi_b_c) =
+                get_folded_polys(&alpha, &beta, muli_a_b_c, addi_a_b_c, r_b, r_c);
+
+            let claim_sum = get_folded_claim_sum(&alpha, &beta, w_i_b_eval, w_i_c_eval);
+
+            if layer_idx > 0 {
+                w_polys_evals.push((*w_i_b_eval, *w_i_c_eval));
+            }
 
             let next_w_i = circuit.get_w_i(layer_idx + 1);
 
+            // Generate f_b_c -> ( add_i(b, c) * W(b) + W(c) ) + ( mul_i(b, c) * W(b) * W(c) )
             let f_b_c = SumPolynomial::new(vec![
                 ProductPolynomial::new(vec![
                     new_muli_b_c,
@@ -139,16 +176,17 @@ impl<T: PrimeField> GKRProver<T> {
                 ]),
             ]);
 
+            // Get sumcheck proof and new set of rs to evaluate W and partially evaluate add_i and mul_i at.
             let (sumcheck_proof, random_points) =
                 SumcheckProver::generate_proof_for_partial_verify(claim_sum, f_b_c, transcript);
 
             random_values = random_points.iter().map(|point| Some(*point)).collect();
-            running_polynomial = circuit.get_w_i(layer_idx + 1);
+            running_layer_polynomial = circuit.get_w_i(layer_idx + 1);
 
             sum_check_proofs.push(sumcheck_proof);
         });
 
-        GKRProof::new(w_polys, sum_check_proofs)
+        GKRProof::new(circuit.get_w_i(0), w_polys_evals, sum_check_proofs)
     }
 }
 
@@ -163,19 +201,16 @@ impl<T: PrimeField> GKRVerifier<T> {
         transcript: &mut Transcript<T>,
         proof: GKRProof<T>,
     ) -> bool {
+        // performs the same step as prover in output poly
         let length_of_rs = proof
-            .w_polys
-            .first()
-            .unwrap()
+            .output_poly
             .get_evaluation_points()
             .len()
             .next_power_of_two()
             .ilog2()
             * 2;
 
-        let mut running_polynomial = proof.w_polys.first().unwrap();
-
-        transcript.append(&running_polynomial.to_bytes());
+        transcript.append(&proof.output_poly.to_bytes());
 
         let mut random_values = vec![];
 
@@ -184,47 +219,68 @@ impl<T: PrimeField> GKRVerifier<T> {
         });
 
         for layer_idx in 0..circuit.get_layer_count() {
+            let (alpha, beta) = (transcript.sample_challenge(), transcript.sample_challenge());
+
+            // Partial verifier checks if partial proof is correct and returns final claim sum and next r values in the process
+            let (is_verified, final_claim_sum, next_evaluation_values) =
+                SumcheckVerifier::partial_verify(&proof.sumcheck_proofs[layer_idx], transcript);
+
             let muli_a_b_c = circuit.get_mul_i(layer_idx);
             let addi_a_b_c = circuit.get_add_i(layer_idx);
 
-            let (_claim_sum, new_muli_b_c, new_addi_b_c) = get_folded_poly_and_claimed_sum(
-                &running_polynomial,
+            // Get the new addi's and muli's using alpha beta folding.
+            let (new_muli_b_c, new_addi_b_c) = get_folded_polys(
+                &alpha,
+                &beta,
                 muli_a_b_c,
                 addi_a_b_c,
                 &random_values[0..random_values.len() / 2],
                 &random_values[random_values.len() / 2..],
-                transcript,
             );
 
-            let next_w_i = if layer_idx + 1 >= proof.w_polys.len() {
-                &MultiLinearPolynomial::new(Vec::from(initial_inputs))
+            // Using the next set of rs gotten from partial prover, we evaluate the new addi's and muli's
+            let evaluated_addi_b_c = new_addi_b_c.evaluate(next_evaluation_values.clone());
+            let evaluated_muli_b_c = new_muli_b_c.evaluate(next_evaluation_values.clone());
+
+            let (new_addi_b_c_eval, new_muli_b_c_eval) = (
+                evaluated_addi_b_c.get_evaluation_points().first().unwrap(),
+                evaluated_muli_b_c.get_evaluation_points().first().unwrap(),
+            );
+
+            // Once we get to the layer before the input, we use the input polynomial instead to build the next_w_i evals, else use the w_poly evals the prover gives us
+            let (next_w_i_b_eval, next_w_i_c_eval) = if layer_idx + 1 == circuit.get_layer_count() {
+                let (r_b, r_c) = (
+                    &next_evaluation_values[0..next_evaluation_values.len() / 2],
+                    &next_evaluation_values[next_evaluation_values.len() / 2..],
+                );
+
+                let next_w_i = MultiLinearPolynomial::new(Vec::from(initial_inputs));
+
+                (
+                    next_w_i
+                        .evaluate(Vec::from(r_b))
+                        .get_evaluation_points()
+                        .first()
+                        .unwrap()
+                        .clone(),
+                    next_w_i
+                        .evaluate(Vec::from(r_c))
+                        .get_evaluation_points()
+                        .first()
+                        .unwrap()
+                        .clone(),
+                )
             } else {
-                &proof.w_polys[layer_idx + 1]
+                proof.w_polys_evals[layer_idx]
             };
 
-            let f_b_c = SumPolynomial::new(vec![
-                ProductPolynomial::new(vec![
-                    new_muli_b_c,
-                    MultiLinearPolynomial::w_mul(next_w_i, next_w_i),
-                ]),
-                ProductPolynomial::new(vec![
-                    new_addi_b_c,
-                    MultiLinearPolynomial::w_add(next_w_i, next_w_i),
-                ]),
-            ]);
+            let fbc_eval = (*new_addi_b_c_eval * (next_w_i_b_eval + next_w_i_c_eval))
+                + (*new_muli_b_c_eval * (next_w_i_b_eval * next_w_i_c_eval));
 
-            let (is_verified, final_claim_sum, next_evaluation_values) =
-                SumcheckVerifier::partial_verify(&proof.sumcheck_proofs[layer_idx], transcript);
-
-            if !is_verified || (f_b_c.evaluate(&next_evaluation_values) != final_claim_sum) {
+            if !is_verified || (fbc_eval != final_claim_sum) {
                 return false;
             }
 
-            running_polynomial = if layer_idx + 1 >= proof.w_polys.len() {
-                &proof.w_polys[layer_idx]
-            } else {
-                &proof.w_polys[layer_idx + 1]
-            };
             random_values = next_evaluation_values;
         }
 
