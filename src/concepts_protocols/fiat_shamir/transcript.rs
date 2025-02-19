@@ -25,10 +25,13 @@ impl<T: PrimeField> Transcript<T> {
         // uses the current hasher and generates a field value from it
         let hash_result = self.hasher.clone().finalize();
 
+        // we append this result back into the hasher to always generate a separate random value subsequently even without calling updating externally
         self.append(&hash_result);
+
         T::from_le_bytes_mod_order(&hash_result)
     }
 
+    // squeeze multiple number of challenges
     pub fn sample_n_challenges(&mut self, n: usize) -> Vec<T> {
         (0..n).map(|_| self.sample_challenge()).collect()
     }
@@ -55,8 +58,15 @@ impl<T: PrimeField, F: GenericHashFunctionTrait> GenericTranscript<T, F> {
         // uses the current hasher and generates a field value from it
         let hash_result = self.hash_function.squeeze();
 
+        // we append this result back into the hasher to always generate a separate random value subsequently even without calling updating externally
         self.append(&hash_result);
+
         T::from_le_bytes_mod_order(&hash_result)
+    }
+
+    // squeeze multiple number of challenges
+    pub fn sample_n_challenges(&mut self, n: usize) -> Vec<T> {
+        (0..n).map(|_| self.generate_challenge()).collect()
     }
 }
 
