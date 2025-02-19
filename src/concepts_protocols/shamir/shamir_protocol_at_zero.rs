@@ -4,6 +4,18 @@ use ark_ff::PrimeField;
 use rand::Rng;
 use std::marker::PhantomData;
 
+// => Shamir's Secret Sharing Protocol
+// This is a cryptographic protocol that allows a secret to be split into N shares, where any K shares (quorum)
+// can reconstruct the original secret, but K-1 or fewer shares reveal no information about the secret.
+// The protocol works by:
+// 1. Creating a polynomial of degree K-1 where the constant term is the secret
+// 2. Generating N points on this polynomial to create the shares
+// 3. Using polynomial interpolation to reconstruct the secret when K shares are combined
+
+// In this variant, that the secret is always stored and point 0. So we do not need to interpolate with the random points
+// We can just use other random points with the secret as evaluation points of the polynomial.
+// The secret will just be made the first evaluation point
+
 pub struct ShamirProtocol<T: PrimeField> {
     _marker: PhantomData<T>,
     quorom: u32,

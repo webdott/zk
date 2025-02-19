@@ -2,6 +2,17 @@ use crate::polynomials::univariate_polynomial;
 use ark_ff::PrimeField;
 use rand::Rng;
 
+// => Shamir's Secret Sharing Protocol
+// This is a cryptographic protocol that allows a secret to be split into N shares, where any K shares (quorum)
+// can reconstruct the original secret, but K-1 or fewer shares reveal no information about the secret.
+// The protocol works by:
+// 1. Creating a polynomial of degree K-1 where the constant term is the secret
+// 2. Generating N points on this polynomial to create the shares
+// 3. Using polynomial interpolation to reconstruct the secret when K shares are combined
+
+// In this variant, that the secret can be stored at any x value; adding an extra vel of security.
+// We then need to interpolate random x and y points alongside the secret.
+
 pub struct ShamierProtocol<T: PrimeField> {
     quorom: u32,
     number_of_shares: u32,
