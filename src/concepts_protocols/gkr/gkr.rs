@@ -1,8 +1,8 @@
 use crate::concepts_protocols::arithmetic_gate::circuit::Circuit;
 use crate::concepts_protocols::fiat_shamir::transcript::Transcript;
-use crate::concepts_protocols::sumcheck::sumcheck_protocol::{
-    SumCheckProof, SumcheckProver, SumcheckVerifier,
-};
+use crate::concepts_protocols::sumcheck::prover::SumcheckProver;
+use crate::concepts_protocols::sumcheck::sumcheck_protocol::SumCheckProof;
+use crate::concepts_protocols::sumcheck::verifier::SumcheckVerifier;
 use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
 use crate::polynomials::product_polynomial::ProductPolynomial;
 use crate::polynomials::sum_polynomial::SumPolynomial;
