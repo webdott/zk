@@ -97,7 +97,8 @@ impl<T: PrimeField> Circuit<T> {
 
             new_acc
         });
-        let input_length = input_lengths_vec
+
+        let input_bit_length = input_lengths_vec
             .iter()
             .max()
             .unwrap()
@@ -105,11 +106,11 @@ impl<T: PrimeField> Circuit<T> {
             .ilog2() as usize;
 
         let mut evaluation_points: Vec<T> =
-            vec![T::from(0); output_length * (1 << (2 * input_length)) as usize];
+            vec![T::from(0); output_length * (1 << (2 * input_bit_length)) as usize];
 
         gates.iter().enumerate().for_each(|(idx, gate)| {
             if self.match_gate_condition(&gate, &condition) {
-                evaluation_points[self.get_bit_idx(idx, gate.left, gate.right, input_length)] =
+                evaluation_points[self.get_bit_idx(idx, gate.left, gate.right, input_bit_length)] =
                     T::from(1);
             }
         });
@@ -163,7 +164,7 @@ mod tests {
                 .last()
                 .unwrap()
                 .get_evaluation_points(),
-            vec![Fq::from(15)]
+            vec![Fq::from(15), Fq::from(0)]
         );
     }
 

@@ -56,12 +56,28 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         let mut y1_index = 0;
         let target = 1 << (self.number_of_variables() as usize) - 1 - variable.0;
 
+        // This gets the different pairings for y1 and y2.
+        // Starting from 0, we can always get the next bit at which that bit is turned on
+        // We basically get all the indexes where the position of the variable is turned off, set that to y1,
+        // We also find where it's turned on and set that to y2
+        // E.g. you have variables a, b, c; Boolean hypercube values are below. For variable b:
+        // 0 0 0, -> y1_0
+        // 0 0 1, -> y1_1
+        // 0 1 0, -> y2_0
+        // 0 1 1, -> y2_1
+        // 1 0 0, -> y1_2
+        // 1 0 1, -> y1_3
+        // 1 1 0, -> y2_2
+        // 1 1 1, -> y2_3
+        // From pattern, you can see that we skip every 2^power_index of variable.
+
         let new_evaluation_points = iter::repeat(())
             .map(|()| {
-                let y1 = &self.evaluation_points[y1_index];
                 let y2_index = self.get_flipped_bit_with_bitwise_or(variable.0, y1_index);
+                let y1 = &self.evaluation_points[y1_index];
                 let y2 = &self.evaluation_points[y2_index];
 
+                // Check if we should skip for next y1 or just continue to the next one
                 y1_index = if (y1_index + 1) % target == 0 {
                     y2_index + 1
                 } else {
