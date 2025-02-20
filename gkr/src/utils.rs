@@ -1,5 +1,6 @@
-use ark_ff::PrimeField;
 use polynomials::multilinear_polynomial::evaluation_form::MultiLinearPolynomial;
+
+use ark_ff::PrimeField;
 
 pub fn get_folded_claim_sum<T: PrimeField>(
     w_i_b_eval: &T,

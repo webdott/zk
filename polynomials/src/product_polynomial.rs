@@ -79,8 +79,9 @@ impl<T: PrimeField> ProductPolynomial<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::product_polynomial::ProductPolynomial;
+
+    use super::*;
     use ark_bn254::Fq;
 
     fn get_test_product_polynomial() -> ProductPolynomial<Fq> {

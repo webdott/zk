@@ -1,13 +1,15 @@
-use crate::gkr_protocol::GKRProof;
-use crate::utils::{get_evaluated_muli_addi_at_a, get_folded_claim_sum, get_folded_polys};
 use arithmetic_circuit::circuit::Circuit;
-use ark_ff::PrimeField;
 use fiat_shamir::transcript::Transcript;
 use polynomials::multilinear_polynomial::evaluation_form::MultiLinearPolynomial;
 use polynomials::product_polynomial::ProductPolynomial;
 use polynomials::sum_polynomial::SumPolynomial;
-use std::marker::PhantomData;
 use sumcheck::prover::SumcheckProver;
+
+use crate::gkr_protocol::GKRProof;
+use crate::utils::{get_evaluated_muli_addi_at_a, get_folded_claim_sum, get_folded_polys};
+
+use ark_ff::PrimeField;
+use std::marker::PhantomData;
 
 pub struct GKRProver<T: PrimeField> {
     _marker: PhantomData<T>,

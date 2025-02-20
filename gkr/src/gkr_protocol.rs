@@ -1,7 +1,8 @@
-use ark_ff::PrimeField;
 use polynomials::multilinear_polynomial::evaluation_form::MultiLinearPolynomial;
-use std::fmt::Debug;
 use sumcheck::sumcheck_protocol::SumCheckProof;
+
+use ark_ff::PrimeField;
+use std::fmt::Debug;
 
 #[derive(Debug)]
 pub struct GKRProof<T: PrimeField> {
@@ -26,12 +27,14 @@ impl<T: PrimeField> GKRProof<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::prover::GKRProver;
-    use crate::verifier::GKRVerifier;
     use arithmetic_circuit::circuit::Circuit;
     use arithmetic_circuit::gate::{Gate, Operation};
-    use ark_bn254::Fq;
     use fiat_shamir::transcript::Transcript;
+
+    use crate::prover::GKRProver;
+    use crate::verifier::GKRVerifier;
+
+    use ark_bn254::Fq;
 
     #[test]
     pub fn test_gkr_sum_check() {

@@ -1,11 +1,13 @@
-use crate::gkr_protocol::GKRProof;
-use crate::utils::{get_evaluated_muli_addi_at_a, get_folded_polys};
 use arithmetic_circuit::circuit::Circuit;
-use ark_ff::PrimeField;
 use fiat_shamir::transcript::Transcript;
 use polynomials::multilinear_polynomial::evaluation_form::MultiLinearPolynomial;
-use std::marker::PhantomData;
 use sumcheck::verifier::SumcheckVerifier;
+
+use crate::gkr_protocol::GKRProof;
+use crate::utils::{get_evaluated_muli_addi_at_a, get_folded_polys};
+
+use ark_ff::PrimeField;
+use std::marker::PhantomData;
 
 pub struct GKRVerifier<T: PrimeField> {
     _marker: PhantomData<T>,

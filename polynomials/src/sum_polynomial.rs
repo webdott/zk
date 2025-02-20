@@ -83,8 +83,9 @@ impl<T: PrimeField> SumPolynomial<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::multilinear_polynomial::evaluation_form::MultiLinearPolynomial;
+
+    use super::*;
     use ark_bn254::Fq;
 
     fn get_test_prod_polynomial() -> ProductPolynomial<Fq> {

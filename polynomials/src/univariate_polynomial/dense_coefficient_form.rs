@@ -165,7 +165,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
 
 #[cfg(test)]
 mod test {
-    use super::UnivariatePolynomial;
+    use super::*;
     use ark_bn254::Fq;
 
     #[test]
