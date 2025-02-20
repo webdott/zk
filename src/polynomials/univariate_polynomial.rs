@@ -11,7 +11,10 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
         UnivariatePolynomial { coefficients }
     }
 
-    // given a point, evaluate the result of the polynomial at that point
+    // Given a point, evaluate the result of the polynomial at that point
+    // x^2 + 5x + 2 (@ x = 2) => (2 * x^0) + (5 * x ) + (1 * x * x)
+    // From this, we can see that rather than raising x to the power each time,
+    // we could keep a running product to multiply with the polynomials coefficients
     pub fn evaluate(&self, x: T) -> T {
         let mut result: T = T::from(0);
         let mut running_x: T = T::from(1);
@@ -24,11 +27,16 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
         result
     }
 
+    // Get evaluation of the polynomial over the boolean hypercube and return sum
     pub fn evaluate_sum_over_boolean_hypercube(&self) -> T {
         self.evaluate(T::from(0)) + self.evaluate(T::from(1))
     }
 
     // Given a specific list of points, find the original polynomial
+    // To do this, we use perform Lagrange interpolation on the points:
+    //           (x - x1)(x - x2)...(x - xn)                  (x - x0)(x - x2)...(x - xn)                   (x - x0)(x - x1)...(x - xn-1)
+    // f(x) =   ------------------------------   * y0   +  ------------------------------   * y1 ..... +  ------------------------------  * yn
+    //          (x0 - x1)(x0 - x2)...(x0 - xn)              (x1 - x0)(x1 - x2)...(x1 - xn)                (xn - x0)(xn - x1)...(xn - xn-1)
     pub fn interpolate(x_points: Vec<T>, y_points: Vec<T>) -> Self {
         let n = x_points.len();
 
@@ -38,7 +46,9 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
 
         for i in 0..n {
             let mut denominator: T = T::from(1);
-            let mut running_poly = UnivariatePolynomial {
+
+            // numerator is a multiplication of polynomials together e.g (x - x1)(x - x2)...(x - xn)
+            let mut numerator = UnivariatePolynomial {
                 coefficients: vec![T::from(1)],
             };
 
@@ -52,10 +62,10 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
                 };
 
                 denominator *= T::from(x_points[i]) - T::from(x_points[j]);
-                running_poly = running_poly.mul(&int_poly)
+                numerator = numerator.mul(&int_poly)
             }
 
-            res = res.add(&running_poly.scalar_mul(y_points[i] / denominator));
+            res = res.add(&numerator.scalar_mul(y_points[i] / denominator));
         }
 
         res
@@ -77,6 +87,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     }
 
     // Multiply polynomials together
+    // You get a polynomial with a degree of the highest degrees in each polynomial multiplied together
     pub fn mul(&self, p2: &Self) -> Self {
         let len_1 = self.coefficients.len();
         let len_2 = p2.coefficients.len();
@@ -92,6 +103,10 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
 
         let mut coefs: Vec<T> = vec![T::from(0); len_2 + len_1 - 1];
 
+        // (2 + x) * (3 + x^2) =>
+        // [2, 1] *  [3, 0, 1] =>
+        // [6, 0 + 3, 2 + 0, 1] =>
+        // [6, 3, 3, 1] => 6 + 3x + 3x^2 + x^3
         for i in 0..max_len {
             let mut idx = i;
 
@@ -107,7 +122,8 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
         }
     }
 
-    // add polynomials together
+    // Add polynomials together
+    // You get a polynomial with a degree of the highest degree in any of the polynomial
     pub fn add(&self, p2: &Self) -> Self {
         let len_1 = self.coefficients.len();
         let len_2 = p2.coefficients.len();
@@ -116,6 +132,10 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
 
         let mut coefs = vec![T::from(0); max_len];
 
+        // (2 + x) + (3 + x^2) =>
+        // [2, 1]  +  [3, 0, 1] =>
+        // [3 + 2, 1 + 0, 1] =>
+        // [5, 1, 1] => 5 + x + x^2
         for i in 0..max_len {
             if i < len_1 {
                 coefs[i] += self.coefficients[i];

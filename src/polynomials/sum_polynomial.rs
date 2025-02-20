@@ -4,7 +4,7 @@ use std::iter;
 
 #[derive(Debug, Clone)]
 pub struct SumPolynomial<T: PrimeField> {
-    prod_polys: Vec<ProductPolynomial<T>>,
+    pub prod_polys: Vec<ProductPolynomial<T>>,
 }
 
 impl<T: PrimeField> SumPolynomial<T> {
@@ -20,22 +20,6 @@ impl<T: PrimeField> SumPolynomial<T> {
         Self { prod_polys }
     }
 
-    pub fn get_poly_length(prod_polys: &[ProductPolynomial<T>]) -> usize {
-        prod_polys.first().unwrap().length()
-    }
-
-    pub fn length(&self) -> usize {
-        Self::get_poly_length(&self.prod_polys)
-    }
-
-    pub fn number_of_variables(&self) -> u32 {
-        self.length().ilog2()
-    }
-
-    pub fn degree(&self) -> usize {
-        self.prod_polys.len()
-    }
-
     pub fn partial_evaluate(&self, t: &[Option<T>]) -> Self {
         let new_polys = self.prod_polys.iter().map(|poly| poly.partial_evaluate(t));
 
@@ -44,6 +28,7 @@ impl<T: PrimeField> SumPolynomial<T> {
         }
     }
 
+    // Evaluate all product polynomials and perform element wise addition
     pub fn evaluate(&self, t: &[Option<T>]) -> T {
         self.prod_polys.iter().map(|poly| poly.evaluate(t)).sum()
     }
@@ -77,11 +62,80 @@ impl<T: PrimeField> SumPolynomial<T> {
 
         res
     }
+
+    pub fn get_poly_length(prod_polys: &[ProductPolynomial<T>]) -> usize {
+        prod_polys.first().unwrap().length()
+    }
+
+    pub fn length(&self) -> usize {
+        Self::get_poly_length(&self.prod_polys)
+    }
+
+    pub fn number_of_variables(&self) -> u32 {
+        self.length().ilog2()
+    }
+
+    pub fn degree(&self) -> usize {
+        self.prod_polys.len()
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
+    use crate::polynomials::product_polynomial::ProductPolynomial;
+    use ark_bn254::Fq;
+
+    fn get_test_prod_polynomial() -> ProductPolynomial<Fq> {
+        ProductPolynomial::new(vec![
+            MultiLinearPolynomial::new(vec![Fq::from(2), Fq::from(3), Fq::from(4), Fq::from(5)]),
+            MultiLinearPolynomial::new(vec![Fq::from(2), Fq::from(3), Fq::from(4), Fq::from(5)]),
+        ])
+    }
+
+    fn get_test_sum_polynomial() -> SumPolynomial<Fq> {
+        SumPolynomial::new(vec![get_test_prod_polynomial(), get_test_prod_polynomial()])
+    }
+
     #[test]
-    #[should_panic]
-    fn product_polynomial_creation() {}
+    fn test_sum_polynomial_reduce() {
+        let test_poly = get_test_sum_polynomial();
+
+        assert_eq!(
+            test_poly.reduce(),
+            vec![Fq::from(8), Fq::from(18), Fq::from(32), Fq::from(50)]
+        );
+    }
+
+    #[test]
+    fn test_sum_polynomial_evaluate() {
+        let test_poly = get_test_sum_polynomial();
+
+        assert_eq!(
+            test_poly.evaluate(&vec![Some(Fq::from(1)), Some(Fq::from(2))]),
+            Fq::from(72)
+        );
+    }
+
+    #[test]
+    fn test_sum_polynomial_partial_evaluate() {
+        let test_poly = get_test_sum_polynomial();
+
+        assert_eq!(
+            test_poly
+                .partial_evaluate(&vec![Some(Fq::from(1)), None])
+                .prod_polys,
+            vec![
+                ProductPolynomial::new(vec![
+                    MultiLinearPolynomial::new(vec![Fq::from(4), Fq::from(5)]),
+                    MultiLinearPolynomial::new(vec![Fq::from(4), Fq::from(5)])
+                ]),
+                ProductPolynomial::new(vec![
+                    MultiLinearPolynomial::new(vec![Fq::from(4), Fq::from(5)]),
+                    MultiLinearPolynomial::new(vec![Fq::from(4), Fq::from(5)])
+                ])
+            ]
+        );
+    }
 }

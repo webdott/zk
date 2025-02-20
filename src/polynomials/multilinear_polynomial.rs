@@ -3,7 +3,7 @@ use std::iter;
 
 use crate::concepts_protocols::arithmetic_gate::gate::Operation;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MultiLinearPolynomial<T: PrimeField> {
     evaluation_points: Vec<T>,
 }
@@ -126,16 +126,17 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         let result_evaluation_length = w_b_len * w_c_len;
         let mut result_eval_points = vec![T::from(0); result_evaluation_length];
 
-        vec![0; result_evaluation_length]
-            .iter()
+        // This performs tensor addition or multiplication between two polynomials of different variables
+        // This variant uses tensor addition and multiplication:
+        // W(b) * W(c) =>
+        // [2, 2] * [3, 2] => [2 * 3, 2 * 2, 2 * 3, 2 * 2] => [6, 4, 6, 4]
+        (0..result_evaluation_length)
             .enumerate()
             .for_each(|(i, _)| {
                 let (idx_b, idx_c) = ((i / w_b_len), i % w_c_len);
 
                 match operation {
-                    Operation::Add => {
-                        result_eval_points[i] = evals_b[idx_b] + evals_c[idx_c];
-                    }
+                    Operation::Add => result_eval_points[i] = evals_b[idx_b] + evals_c[idx_c],
                     Operation::Mul => result_eval_points[i] = evals_b[idx_b] * evals_c[idx_c],
                 }
             });
@@ -143,6 +144,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         Self::new(result_eval_points)
     }
 
+    // Adds two polynomials of same variables together
     pub fn add(&self, other: &MultiLinearPolynomial<T>) -> Self {
         if self.number_of_variables() != other.number_of_variables() {
             panic!("Polynomial must have the same length");
