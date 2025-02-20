@@ -1,6 +1,6 @@
-use crate::concepts_protocols::arithmetic_gate::circuit::Circuit;
+use crate::concepts_protocols::arithmetic_circuit::circuit::Circuit;
 use crate::concepts_protocols::fiat_shamir::transcript::Transcript;
-use crate::concepts_protocols::gkr::gkr::GKRProof;
+use crate::concepts_protocols::gkr::gkr_protocol::GKRProof;
 use crate::concepts_protocols::gkr::utils::{get_evaluated_muli_addi_at_a, get_folded_polys};
 use crate::concepts_protocols::sumcheck::verifier::SumcheckVerifier;
 use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
@@ -66,7 +66,7 @@ impl<T: PrimeField> GKRVerifier<T> {
                 evaluated_muli_b_c.get_evaluation_points().first().unwrap(),
             );
 
-            // Once we get to the layer before the input, we use the input polynomial instead to build the next_w_i evals, else use the w_poly evals the prover gives us
+            // Once we get to the layer before the input, we use the input polynomial instead to build the next_w_i evals,
             let (next_w_i_b_eval, next_w_i_c_eval) = if layer_idx + 1 == circuit.get_layer_count() {
                 let (r_b, r_c) = (
                     &next_evaluation_values[0..next_evaluation_values.len() / 2],
@@ -89,6 +89,7 @@ impl<T: PrimeField> GKRVerifier<T> {
                         .unwrap()
                         .clone(),
                 )
+            // else use the w_poly evals the prover gives us
             } else {
                 proof.w_polys_evals[layer_idx]
             };
@@ -96,6 +97,8 @@ impl<T: PrimeField> GKRVerifier<T> {
             let fbc_eval = (*new_addi_b_c_eval * (next_w_i_b_eval + next_w_i_c_eval))
                 + (*new_muli_b_c_eval * (next_w_i_b_eval * next_w_i_c_eval));
 
+            // Now the verifier performs the oracle check not being handled by partial verifier
+            // We check if the f_b_c polynomial evaluated at b and c values equal the final claim sum
             if !is_verified || (fbc_eval != final_claim_sum) {
                 return false;
             }

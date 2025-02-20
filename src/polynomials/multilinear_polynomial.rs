@@ -1,7 +1,7 @@
 use ark_ff::{BigInteger, PrimeField};
 use std::iter;
 
-use crate::concepts_protocols::arithmetic_gate::gate::Operation;
+use crate::concepts_protocols::arithmetic_circuit::gate::Operation;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MultiLinearPolynomial<T: PrimeField> {

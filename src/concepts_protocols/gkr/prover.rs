@@ -1,6 +1,6 @@
-use crate::concepts_protocols::arithmetic_gate::circuit::Circuit;
+use crate::concepts_protocols::arithmetic_circuit::circuit::Circuit;
 use crate::concepts_protocols::fiat_shamir::transcript::Transcript;
-use crate::concepts_protocols::gkr::gkr::GKRProof;
+use crate::concepts_protocols::gkr::gkr_protocol::GKRProof;
 use crate::concepts_protocols::gkr::utils::{
     get_evaluated_muli_addi_at_a, get_folded_claim_sum, get_folded_polys,
 };
@@ -47,9 +47,9 @@ impl<T: PrimeField> GKRProver<T> {
 
         for layer_idx in 0..circuit.get_layer_count() {
             // Prover is sending the verifier the following at each step:
-            //   - W_output poly of the first layer, then just the evaluations of W_poly of the subsequent layers -> Perform alpha beta folding if more than one output to form one output poly
+            //   - W_output poly of the first layer, t
+            //   - The evaluations of W_poly of the subsequent layers -> Perform alpha beta folding if more than one output to form one output poly
             //   - Intermediate Sumcheck proof
-            // perform alpha-beta folding on W poly
 
             let (muli_a_b_c, addi_a_b_c) =
                 (circuit.get_mul_i(layer_idx), circuit.get_add_i(layer_idx));
@@ -70,6 +70,7 @@ impl<T: PrimeField> GKRProver<T> {
                         addi_b_c,
                     )
                 }
+                // perform alpha-beta folding on W poly
                 _ => {
                     let (r_b, r_c) = (
                         &random_values[0..random_values.len() / 2],

@@ -1,4 +1,4 @@
-use crate::concepts_protocols::arithmetic_gate::gate::{Gate, Operation};
+use crate::concepts_protocols::arithmetic_circuit::gate::{Gate, Operation};
 use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
 use ark_ff::PrimeField;
 use std::cmp::max;
@@ -15,12 +15,27 @@ pub struct Circuit<T: PrimeField> {
 impl<T: PrimeField> Circuit<T> {
     pub fn new(layers: Vec<Vec<Gate>>) -> Self {
         Self {
-            _marker: PhantomData,
             layers,
+            _marker: PhantomData,
             layer_evaluations: vec![],
         }
     }
 
+    fn match_gate_condition(&self, gate: &Gate, condition: &Operation) -> bool {
+        match gate.operation {
+            Operation::Add => match condition {
+                Operation::Add => true,
+                _ => false,
+            },
+            Operation::Mul => match condition {
+                Operation::Mul => true,
+                _ => false,
+            },
+        }
+    }
+
+    // This takes in a set of inputs and for each layer of gates we have, calculate the next set of inputs
+    // The set of inputs are stored as evaluation layers for easy retrieval
     pub fn evaluate_at_input(&mut self, inputs: Vec<T>) -> MultiLinearPolynomial<T> {
         let mut evaluation_layers = vec![MultiLinearPolynomial::new(&inputs)];
         let mut running_inputs = inputs;
@@ -65,25 +80,12 @@ impl<T: PrimeField> Circuit<T> {
         (((output_idx << input_bit_repr) | left_idx) << input_bit_repr) | right_idx
     }
 
-    fn match_gate_condition(&self, gate: &Gate, condition: &Operation) -> bool {
-        match gate.operation {
-            Operation::Add => match condition {
-                Operation::Add => true,
-                _ => false,
-            },
-            Operation::Mul => match condition {
-                Operation::Mul => true,
-                _ => false,
-            },
-        }
-    }
-
     // This gets the gate polynomial at an index represented in multilinear form
     // For each gate have an output index, two input indexes for the two inputs
     // In this case, the output is basically the index of the gate since they are in a vec
     // The evaluation points would basically be 2^(all bits used to represent output, and the two indexes).
     // i.e if we have the gate at output index 10, left input index at 00 and right index at 01:
-    // In total, there are 6 bits used to represent this gate poly which is 2^6 evaluation points.
+    // In total, there are 6 bits (100001) in total used to represent this gate poly which is 2^6 evaluation points.
     fn get_gate_poly(&self, layer_idx: usize, condition: Operation) -> MultiLinearPolynomial<T> {
         if layer_idx >= self.layers.len() {
             panic!("layer index out of bounds");
@@ -118,6 +120,7 @@ impl<T: PrimeField> Circuit<T> {
 
         gates.iter().enumerate().for_each(|(idx, gate)| {
             if self.match_gate_condition(&gate, &condition) {
+                // set the index where gate is present to 1.
                 evaluation_points[self.get_bit_idx(idx, gate.left, gate.right, input_bit_length)] =
                     T::from(1);
             }

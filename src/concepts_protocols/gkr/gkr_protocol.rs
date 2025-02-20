@@ -1,4 +1,4 @@
-use crate::concepts_protocols::arithmetic_gate::circuit::Circuit;
+use crate::concepts_protocols::arithmetic_circuit::circuit::Circuit;
 use crate::concepts_protocols::fiat_shamir::transcript::Transcript;
 use crate::concepts_protocols::sumcheck::sumcheck_protocol::SumCheckProof;
 use crate::polynomials::multilinear_polynomial::MultiLinearPolynomial;
@@ -29,7 +29,7 @@ impl<T: PrimeField> GKRProof<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::concepts_protocols::arithmetic_gate::gate::{Gate, Operation};
+    use crate::concepts_protocols::arithmetic_circuit::gate::{Gate, Operation};
     use crate::concepts_protocols::gkr::prover::GKRProver;
     use crate::concepts_protocols::gkr::verifier::GKRVerifier;
     use ark_bn254::Fq;
