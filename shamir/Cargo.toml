@@ -1,0 +1,10 @@
+[package]
+name = "shamir"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ark-bn254 = "0.5.0"
+ark-ff = "0.5.0"
+rand = "0.8.5"
+polynomials = { path = "../polynomials" }

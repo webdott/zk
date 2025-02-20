@@ -1,0 +1,12 @@
+[package]
+name = "gkr"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ark-bn254 = "0.5.0"
+ark-ff = "0.5.0"
+polynomials = { path = "../polynomials" }
+arithmetic_circuit = { path = "../arithmetic_circuit" }
+sumcheck = { path = "../sumcheck" }
+fiat_shamir = { path = "../fiat_shamir" }

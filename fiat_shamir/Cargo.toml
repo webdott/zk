@@ -1,0 +1,9 @@
+[package]
+name = "fiat_shamir"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ark-ff = "0.5.0"
+ark-bn254 = "0.5.0"
+sha3 = "0.10.8"
