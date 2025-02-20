@@ -29,10 +29,10 @@ impl<T: PrimeField> ShamierProtocol<T> {
     }
 
     // Given a secret and the number of passwords to generate from it, generate the password shares
-    pub fn generate_shares(&self, secret: T) -> Vec<(T, T)> {
+    pub fn generate_shares(&self, secret: &T) -> Vec<(T, T)> {
         // initialize the set of points to interpolate on with the secret's x point
         let (x_points, y_points): (&mut Vec<T>, &mut Vec<T>) =
-            (&mut vec![self.secret_x], &mut vec![secret]);
+            (&mut vec![self.secret_x], &mut vec![*secret]);
 
         let mut random = rand::thread_rng();
 
@@ -55,16 +55,14 @@ impl<T: PrimeField> ShamierProtocol<T> {
         }
 
         // Interpolate on the points generated i.e secret and other x_points in the quorom
-        let polynomial = univariate_polynomial::UnivariatePolynomial::interpolate(
-            x_points.clone(),
-            y_points.clone(),
-        );
+        let polynomial =
+            univariate_polynomial::UnivariatePolynomial::interpolate(x_points, y_points);
 
         // Once we get the polynomial, evaluate the polynomial at random set of x_points of length (number of shares) and return them
         std::iter::repeat(())
             .map(|()| T::rand(&mut random))
             .filter(|x| x != &self.secret_x)
-            .map(|x| (x.clone(), polynomial.evaluate(x)))
+            .map(|x| (x, polynomial.evaluate(x)))
             .take(self.number_of_shares as usize)
             .collect()
     }
@@ -101,7 +99,7 @@ impl<T: PrimeField> ShamierProtocol<T> {
 
         // Get back the polynomial we got while generating the shares
         let original_polynomial =
-            univariate_polynomial::UnivariatePolynomial::interpolate(x_points, y_points);
+            univariate_polynomial::UnivariatePolynomial::interpolate(&x_points, &y_points);
 
         // Evaluate the polynomial at secret's x_point
         Ok(original_polynomial.evaluate(self.secret_x))
@@ -117,7 +115,7 @@ mod test {
     pub fn test_generate_shares() {
         let shamier = ShamierProtocol::new(3, 7, Fq::from(4));
 
-        let shares = shamier.generate_shares(Fq::from(62));
+        let shares = shamier.generate_shares(&Fq::from(62));
 
         assert_eq!(shares.len(), 7);
     }
@@ -126,7 +124,7 @@ mod test {
     pub fn test_reconstruct_secret_not_enough() {
         let shamier = ShamierProtocol::new(3, 7, Fq::from(4));
 
-        shamier.generate_shares(Fq::from(62));
+        shamier.generate_shares(&Fq::from(62));
 
         let secret = shamier.reconstruct_secret(&vec![
             (Fq::from(0), Fq::from(15)),
@@ -142,7 +140,7 @@ mod test {
         // Secret -> 62
         let shamier = ShamierProtocol::new(3, 7, Fq::from(4));
 
-        shamier.generate_shares(Fq::from(62));
+        shamier.generate_shares(&Fq::from(62));
 
         let secret = shamier.reconstruct_secret(&vec![
             (Fq::from(0), Fq::from(15)),
@@ -160,7 +158,7 @@ mod test {
         let secret = Fq::from(62);
         let shamier = ShamierProtocol::new(3, 7, Fq::from(4));
 
-        let shares = shamier.generate_shares(secret.clone());
+        let shares = shamier.generate_shares(&secret);
 
         let regenerated_secret = shamier.reconstruct_secret(&shares);
 

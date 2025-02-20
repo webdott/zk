@@ -9,18 +9,20 @@ pub struct MultiLinearPolynomial<T: PrimeField> {
 }
 
 impl<T: PrimeField> MultiLinearPolynomial<T> {
-    pub fn new(evaluation_points: Vec<T>) -> Self {
+    pub fn new(evaluation_points: &Vec<T>) -> Self {
         if !evaluation_points.len().is_power_of_two() {
             panic!(
                 "Invalid Multilinear Polynomial: evaluation points length is not a power of two"
             );
         }
 
-        Self { evaluation_points }
+        Self {
+            evaluation_points: evaluation_points.to_vec(),
+        }
     }
 
     pub fn scalar_mul(&self, scalar: T) -> Self {
-        Self::new(self.evaluation_points.iter().map(|e| *e * scalar).collect())
+        Self::new(&self.evaluation_points.iter().map(|e| *e * scalar).collect())
     }
 
     pub fn get_evaluation_points(&self) -> &Vec<T> {
@@ -89,10 +91,10 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
             .take(new_evaluation_points_length)
             .collect();
 
-        Self::new(new_evaluation_points)
+        Self::new(&new_evaluation_points)
     }
 
-    pub fn evaluate(&self, points: Vec<Option<T>>) -> Self {
+    pub fn evaluate(&self, points: &[Option<T>]) -> Self {
         if points.len() != self.number_of_variables() as usize {
             panic!("points length does not match number of variables");
         }
@@ -100,7 +102,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         let mut done = 0;
 
         points.iter().enumerate().fold(
-            MultiLinearPolynomial::new(self.evaluation_points.clone()),
+            MultiLinearPolynomial::new(&self.evaluation_points),
             |acc, (idx, point)| {
                 let mlp = match point {
                     Some(_) => {
@@ -149,7 +151,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         (0..result_evaluation_length)
             .enumerate()
             .for_each(|(i, _)| {
-                let (idx_b, idx_c) = ((i / w_b_len), i % w_c_len);
+                let (idx_b, idx_c) = (i / w_b_len, i % w_c_len);
 
                 match operation {
                     Operation::Add => result_eval_points[i] = evals_b[idx_b] + evals_c[idx_c],
@@ -157,7 +159,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
                 }
             });
 
-        Self::new(result_eval_points)
+        Self::new(&result_eval_points)
     }
 
     // Adds two polynomials of same variables together
@@ -173,7 +175,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
                 self.get_evaluation_points()[idx] + other.get_evaluation_points()[idx];
         });
 
-        Self::new(new_evals)
+        Self::new(&new_evals)
     }
 
     pub fn w_add(
@@ -193,10 +195,8 @@ mod test {
     use super::*;
     use ark_bn254::Fq;
 
-    #[test]
-    pub fn test_evaluate_4_variables() {
-        // 3ac + 4bd + 5ab -> where a = 4, b = 2, c = 6, d = 1
-        let mlp = MultiLinearPolynomial::new(vec![
+    fn get_test_polynomial() -> MultiLinearPolynomial<Fq> {
+        MultiLinearPolynomial::new(&vec![
             Fq::from(0),
             Fq::from(0),
             Fq::from(0),
@@ -213,10 +213,29 @@ mod test {
             Fq::from(9),
             Fq::from(8),
             Fq::from(12),
-        ]);
+        ])
+    }
+
+    fn get_test_polynomial_2() -> MultiLinearPolynomial<Fq> {
+        MultiLinearPolynomial::new(&vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(5),
+        ])
+    }
+
+    #[test]
+    pub fn test_evaluate_4_variables() {
+        // 3ac + 4bd + 5ab -> where a = 4, b = 2, c = 6, d = 1
+        let mlp = get_test_polynomial();
 
         assert_eq!(
-            mlp.evaluate(vec![
+            mlp.evaluate(&vec![
                 Some(Fq::from(4)),
                 Some(Fq::from(2)),
                 Some(Fq::from(6)),
@@ -230,27 +249,10 @@ mod test {
     #[test]
     pub fn test_partially_evaluate_4_variables_incomplete_points() {
         // 3ac + 4bd + 5ab -> where a = 4
-        let mlp = MultiLinearPolynomial::new(vec![
-            Fq::from(0),
-            Fq::from(0),
-            Fq::from(0),
-            Fq::from(0),
-            Fq::from(0),
-            Fq::from(4),
-            Fq::from(0),
-            Fq::from(4),
-            Fq::from(0),
-            Fq::from(0),
-            Fq::from(3),
-            Fq::from(3),
-            Fq::from(5),
-            Fq::from(9),
-            Fq::from(8),
-            Fq::from(12),
-        ]);
+        let mlp = get_test_polynomial();
 
         assert_eq!(
-            mlp.evaluate(vec![Some(Fq::from(4)), None, None, None])
+            mlp.evaluate(&vec![Some(Fq::from(4)), None, None, None])
                 .evaluation_points,
             vec![
                 Fq::from(0),
@@ -268,19 +270,10 @@ mod test {
     #[test]
     pub fn test_partially_evaluate_3_variables_incomplete_points() {
         //2ab + 3bc -> where c = 3
-        let mlp = MultiLinearPolynomial::new(vec![
-            Fq::from(0),
-            Fq::from(0),
-            Fq::from(0),
-            Fq::from(3),
-            Fq::from(0),
-            Fq::from(0),
-            Fq::from(2),
-            Fq::from(5),
-        ]);
+        let mlp = get_test_polynomial_2();
 
         assert_eq!(
-            mlp.evaluate(vec![None, None, Some(Fq::from(3))])
+            mlp.evaluate(&vec![None, None, Some(Fq::from(3))])
                 .evaluation_points,
             vec![Fq::from(0), Fq::from(9), Fq::from(0), Fq::from(11)],
         );
@@ -289,8 +282,8 @@ mod test {
     #[test]
     pub fn test_operation_ws() {
         let (w_b, w_c) = (
-            MultiLinearPolynomial::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)]),
-            MultiLinearPolynomial::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]),
+            MultiLinearPolynomial::new(&vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)]),
+            MultiLinearPolynomial::new(&vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]),
         );
 
         assert_eq!(

@@ -58,7 +58,8 @@ impl<T: PrimeField, F: GenericHashFunctionTrait> GenericTranscript<T, F> {
         // uses the current hasher and generates a field value from it
         let hash_result = self.hash_function.squeeze();
 
-        // we append this result back into the hasher to always generate a separate random value subsequently even without calling updating externally
+        // We append this result back into the hasher
+        // We do this to always generate a separate random value subsequently even without calling updating externally
         self.append(&hash_result);
 
         T::from_le_bytes_mod_order(&hash_result)

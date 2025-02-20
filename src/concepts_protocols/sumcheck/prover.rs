@@ -25,7 +25,7 @@ impl<T: PrimeField> SumcheckProver<T> {
         let sample_challenge = transcript.sample_challenge();
 
         (
-            sample_challenge.clone(),
+            sample_challenge,
             iter::repeat(())
                 .enumerate()
                 .map(|(idx, _x)| {
@@ -100,8 +100,8 @@ impl<T: PrimeField> SumcheckProver<T> {
                 claimed_sum = evaluation_points[0] + evaluation_points[1];
 
                 evaluated_polynomial_over_boolean_hypercube = UnivariatePolynomial::interpolate(
-                    vec![T::from(0), T::from(1), T::from(2)],
-                    evaluation_points,
+                    &vec![T::from(0), T::from(1), T::from(2)],
+                    &evaluation_points,
                 );
             } else if let Some(multi_poly) = &resulting_multi_polynomial {
                 let evaluation_points = multi_poly.get_evaluation_points();
@@ -116,8 +116,8 @@ impl<T: PrimeField> SumcheckProver<T> {
                 claimed_sum = eval_0 + eval_1;
 
                 evaluated_polynomial_over_boolean_hypercube = UnivariatePolynomial::interpolate(
-                    vec![T::from(0), T::from(1)],
-                    vec![eval_0, eval_1],
+                    &vec![T::from(0), T::from(1)],
+                    &vec![eval_0, eval_1],
                 )
             }
 
@@ -141,7 +141,7 @@ impl<T: PrimeField> SumcheckProver<T> {
 
                 random_challenges.push(challenge);
 
-                resulting_multi_polynomial = Some(multi_poly.evaluate(points));
+                resulting_multi_polynomial = Some(multi_poly.evaluate(&points));
             }
 
             round_polys.push(evaluated_polynomial_over_boolean_hypercube);

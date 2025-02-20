@@ -89,8 +89,8 @@ mod tests {
 
     fn get_test_prod_polynomial() -> ProductPolynomial<Fq> {
         ProductPolynomial::new(vec![
-            MultiLinearPolynomial::new(vec![Fq::from(2), Fq::from(3), Fq::from(4), Fq::from(5)]),
-            MultiLinearPolynomial::new(vec![Fq::from(2), Fq::from(3), Fq::from(4), Fq::from(5)]),
+            MultiLinearPolynomial::new(&vec![Fq::from(2), Fq::from(3), Fq::from(4), Fq::from(5)]),
+            MultiLinearPolynomial::new(&vec![Fq::from(2), Fq::from(3), Fq::from(4), Fq::from(5)]),
         ])
     }
 
@@ -128,12 +128,12 @@ mod tests {
                 .prod_polys,
             vec![
                 ProductPolynomial::new(vec![
-                    MultiLinearPolynomial::new(vec![Fq::from(4), Fq::from(5)]),
-                    MultiLinearPolynomial::new(vec![Fq::from(4), Fq::from(5)])
+                    MultiLinearPolynomial::new(&vec![Fq::from(4), Fq::from(5)]),
+                    MultiLinearPolynomial::new(&vec![Fq::from(4), Fq::from(5)])
                 ]),
                 ProductPolynomial::new(vec![
-                    MultiLinearPolynomial::new(vec![Fq::from(4), Fq::from(5)]),
-                    MultiLinearPolynomial::new(vec![Fq::from(4), Fq::from(5)])
+                    MultiLinearPolynomial::new(&vec![Fq::from(4), Fq::from(5)]),
+                    MultiLinearPolynomial::new(&vec![Fq::from(4), Fq::from(5)])
                 ])
             ]
         );

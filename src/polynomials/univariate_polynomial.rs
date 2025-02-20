@@ -37,7 +37,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     //           (x - x1)(x - x2)...(x - xn)                  (x - x0)(x - x2)...(x - xn)                   (x - x0)(x - x1)...(x - xn-1)
     // f(x) =   ------------------------------   * y0   +  ------------------------------   * y1 ..... +  ------------------------------  * yn
     //          (x0 - x1)(x0 - x2)...(x0 - xn)              (x1 - x0)(x1 - x2)...(x1 - xn)                (xn - x0)(xn - x1)...(xn - xn-1)
-    pub fn interpolate(x_points: Vec<T>, y_points: Vec<T>) -> Self {
+    pub fn interpolate(x_points: &[T], y_points: &[T]) -> Self {
         let n = x_points.len();
 
         let mut res = UnivariatePolynomial {
@@ -197,7 +197,7 @@ mod test {
     #[test]
     pub fn test_interpolate() {
         let poly = UnivariatePolynomial::interpolate(
-            vec![
+            &vec![
                 Fq::from(0),
                 Fq::from(1),
                 Fq::from(2),
@@ -208,7 +208,7 @@ mod test {
                 Fq::from(7),
                 Fq::from(8),
             ],
-            vec![
+            &vec![
                 Fq::from(0),
                 Fq::from(1),
                 Fq::from(1),
@@ -230,22 +230,22 @@ mod test {
     #[test]
     pub fn test_interpolate_2() {
         let poly1 = UnivariatePolynomial::interpolate(
-            vec![Fq::from(0), Fq::from(1), Fq::from(2)],
-            vec![Fq::from(8), Fq::from(10), Fq::from(16)],
+            &vec![Fq::from(0), Fq::from(1), Fq::from(2)],
+            &vec![Fq::from(8), Fq::from(10), Fq::from(16)],
         );
 
         // f(x) = 2x
         // [(0, 0), (1,2)]
         let poly2 = UnivariatePolynomial::interpolate(
-            vec![Fq::from(0), Fq::from(1)],
-            vec![Fq::from(0), Fq::from(2)],
+            &vec![Fq::from(0), Fq::from(1)],
+            &vec![Fq::from(0), Fq::from(2)],
         );
 
         // f(x) = 2x
         // [(2, 4), (4,8)]
         let poly3 = UnivariatePolynomial::interpolate(
-            vec![Fq::from(2), Fq::from(4)],
-            vec![Fq::from(4), Fq::from(8)],
+            &vec![Fq::from(2), Fq::from(4)],
+            &vec![Fq::from(4), Fq::from(8)],
         );
 
         assert_eq!(

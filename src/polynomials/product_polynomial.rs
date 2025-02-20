@@ -32,7 +32,7 @@ impl<T: PrimeField> ProductPolynomial<T> {
             panic!("evaluation points not equal to number of variables");
         }
 
-        let new_polys = self.polys.iter().map(|poly| poly.evaluate(Vec::from(t)));
+        let new_polys = self.polys.iter().map(|poly| poly.evaluate(t));
 
         Self {
             polys: new_polys.collect(),
@@ -46,13 +46,7 @@ impl<T: PrimeField> ProductPolynomial<T> {
 
         self.polys
             .iter()
-            .map(|poly| {
-                poly.evaluate(Vec::from(t))
-                    .get_evaluation_points()
-                    .first()
-                    .unwrap()
-                    .clone()
-            })
+            .map(|poly| *poly.evaluate(t).get_evaluation_points().first().unwrap())
             .product()
     }
 
@@ -90,8 +84,8 @@ mod tests {
 
     fn get_test_product_polynomial() -> ProductPolynomial<Fq> {
         ProductPolynomial::new(vec![
-            MultiLinearPolynomial::new(vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]),
-            MultiLinearPolynomial::new(vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]),
+            MultiLinearPolynomial::new(&vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]),
+            MultiLinearPolynomial::new(&vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]),
         ])
     }
 
@@ -124,8 +118,8 @@ mod tests {
                 .partial_evaluate(&vec![Some(Fq::from(1)), None])
                 .polys,
             vec![
-                MultiLinearPolynomial::new(vec![Fq::from(3), Fq::from(4)]),
-                MultiLinearPolynomial::new(vec![Fq::from(3), Fq::from(4)])
+                MultiLinearPolynomial::new(&vec![Fq::from(3), Fq::from(4)]),
+                MultiLinearPolynomial::new(&vec![Fq::from(3), Fq::from(4)])
             ]
         );
     }

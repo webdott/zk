@@ -32,8 +32,8 @@ impl<T: PrimeField> ShamirProtocol<T> {
     }
 
     // Given a secret and the number of passwords to generate from it, generate the password shares
-    pub fn generate_shares(&self, secret: T) -> Vec<(T, T)> {
-        let mut evaluation_points = vec![T::from(secret)];
+    pub fn generate_shares(&self, secret: &T) -> Vec<(T, T)> {
+        let mut evaluation_points = vec![*secret];
 
         let mut random = rand::thread_rng();
 
@@ -47,7 +47,7 @@ impl<T: PrimeField> ShamirProtocol<T> {
         std::iter::repeat(())
             .map(|()| T::rand(&mut random))
             .filter(|x| x != &T::from(0))
-            .map(|x| (x.clone(), polynomial.evaluate(x)))
+            .map(|x| (x, polynomial.evaluate(x)))
             .take(self.number_of_shares as usize)
             .collect()
     }
@@ -84,7 +84,7 @@ impl<T: PrimeField> ShamirProtocol<T> {
 
         // Get back the polynomial we got while generating the shares
         let original_polynomial =
-            univariate_polynomial::UnivariatePolynomial::interpolate(x_points, y_points);
+            univariate_polynomial::UnivariatePolynomial::interpolate(&x_points, &y_points);
 
         // Evaluate the polynomial at secret's x_point (0 in this case)
         Ok(original_polynomial.evaluate(T::from(0)))
@@ -100,7 +100,7 @@ mod test {
     pub fn test_generate_shares() {
         let shamir = ShamirProtocol::new(3, 7);
 
-        let shares = shamir.generate_shares(Fq::from(62));
+        let shares = shamir.generate_shares(&Fq::from(62));
 
         assert_eq!(shares.len(), 7);
     }
@@ -109,7 +109,7 @@ mod test {
     pub fn test_reconstruct_secret_not_enough() {
         let shamir = ShamirProtocol::new(3, 7);
 
-        shamir.generate_shares(Fq::from(62));
+        shamir.generate_shares(&Fq::from(62));
 
         let secret = shamir.reconstruct_secret(&vec![
             (Fq::from(0), Fq::from(15)),
@@ -123,7 +123,7 @@ mod test {
     pub fn test_reconstruct_secret_enough_but_wrong() {
         let shamir = ShamirProtocol::new(3, 7);
 
-        shamir.generate_shares(Fq::from(62));
+        shamir.generate_shares(&Fq::from(62));
 
         let secret = shamir.reconstruct_secret(&vec![
             (Fq::from(0), Fq::from(15)),
@@ -139,8 +139,9 @@ mod test {
         let secret = Fq::from(62);
         let shamir = ShamirProtocol::new(3, 7);
 
-        let shares = shamir.generate_shares(secret.clone());
+        let shares = shamir.generate_shares(&secret);
 
+        
         let regenerated_secret = shamir.reconstruct_secret(&shares);
 
         assert_eq!(regenerated_secret, Ok(secret));

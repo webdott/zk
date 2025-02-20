@@ -31,7 +31,7 @@ mod test {
             Fq::from(5),
         ];
 
-        let initial_polynomial = MultiLinearPolynomial::new(polynomial);
+        let initial_polynomial = MultiLinearPolynomial::new(&polynomial);
 
         let sum_check_proof = SumcheckProver::generate_sumcheck_proof(&initial_polynomial);
 
@@ -65,7 +65,7 @@ mod test {
 
         assert_eq!(
             SumcheckVerifier::verify_proof(
-                &MultiLinearPolynomial::new(polynomial),
+                &MultiLinearPolynomial::new(&polynomial),
                 sum_check_proof
             ),
             false
@@ -81,12 +81,12 @@ mod test {
 
         let initial_polynomial = SumPolynomial::new(vec![
             ProductPolynomial::new(vec![
-                MultiLinearPolynomial::new(eval_1.clone()),
-                MultiLinearPolynomial::new(eval_2.clone()),
+                MultiLinearPolynomial::new(&eval_1),
+                MultiLinearPolynomial::new(&eval_2),
             ]),
             ProductPolynomial::new(vec![
-                MultiLinearPolynomial::new(eval_1),
-                MultiLinearPolynomial::new(eval_2),
+                MultiLinearPolynomial::new(&eval_1),
+                MultiLinearPolynomial::new(&eval_2),
             ]),
         ]);
 

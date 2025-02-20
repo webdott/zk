@@ -5,7 +5,7 @@ use std::cmp::max;
 
 use std::marker::PhantomData;
 
-#[derive(Clone)]
+//
 pub struct Circuit<T: PrimeField> {
     _marker: PhantomData<T>,
     layers: Vec<Vec<Gate>>,
@@ -21,12 +21,8 @@ impl<T: PrimeField> Circuit<T> {
         }
     }
 
-    pub fn get_layer_count(&self) -> usize {
-        self.layers.len()
-    }
-
     pub fn evaluate_at_input(&mut self, inputs: Vec<T>) -> MultiLinearPolynomial<T> {
-        let mut evaluation_layers = vec![MultiLinearPolynomial::new(inputs.clone())];
+        let mut evaluation_layers = vec![MultiLinearPolynomial::new(&inputs)];
         let mut running_inputs = inputs;
 
         self.layers.iter().for_each(|gates| {
@@ -42,17 +38,23 @@ impl<T: PrimeField> Circuit<T> {
                 next_inputs[idx] = output;
             });
 
-            evaluation_layers.push(MultiLinearPolynomial::new(next_inputs.clone()));
+            evaluation_layers.push(MultiLinearPolynomial::new(&next_inputs));
             running_inputs = next_inputs;
         });
 
-        let output_polynomial = evaluation_layers.last().unwrap().clone();
+        let output_poly =
+            MultiLinearPolynomial::new(evaluation_layers.last().unwrap().get_evaluation_points());
 
         self.layer_evaluations = evaluation_layers;
 
-        output_polynomial
+        output_poly
     }
 
+    // This helps us to get the index at which a gate is present (turned on)
+    // Say we have a gate that has an output at index 00, left input at 10 and right input at 11
+    // The index for that in the gate poly would be 001011
+    // To achieve this, we use bit manipulation - combining the left shift and OR operations.
+    // Left shift to accommodate for next index to add and OR operator to add the index.
     fn get_bit_idx(
         &self,
         output_idx: usize,
@@ -76,6 +78,12 @@ impl<T: PrimeField> Circuit<T> {
         }
     }
 
+    // This gets the gate polynomial at an index represented in multilinear form
+    // For each gate have an output index, two input indexes for the two inputs
+    // In this case, the output is basically the index of the gate since they are in a vec
+    // The evaluation points would basically be 2^(all bits used to represent output, and the two indexes).
+    // i.e if we have the gate at output index 10, left input index at 00 and right index at 01:
+    // In total, there are 6 bits used to represent this gate poly which is 2^6 evaluation points.
     fn get_gate_poly(&self, layer_idx: usize, condition: Operation) -> MultiLinearPolynomial<T> {
         if layer_idx >= self.layers.len() {
             panic!("layer index out of bounds");
@@ -115,15 +123,19 @@ impl<T: PrimeField> Circuit<T> {
             }
         });
 
-        MultiLinearPolynomial::new(evaluation_points)
+        MultiLinearPolynomial::new(&evaluation_points)
     }
 
+    // After evaluation of the circuit, we can just get the polynomial of each w_layer
     pub fn get_w_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
         if layer_idx >= self.layer_evaluations.len() {
             panic!("layer index out of bounds");
         }
 
-        self.layer_evaluations[self.layer_evaluations.len() - layer_idx - 1].clone()
+        MultiLinearPolynomial::new(
+            self.layer_evaluations[self.layer_evaluations.len() - layer_idx - 1]
+                .get_evaluation_points(),
+        )
     }
 
     pub fn get_add_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
@@ -132,6 +144,11 @@ impl<T: PrimeField> Circuit<T> {
 
     pub fn get_mul_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
         self.get_gate_poly(layer_idx, Operation::Mul)
+    }
+
+    // Calculate how many layers we have in the circuit
+    pub fn get_layer_count(&self) -> usize {
+        self.layers.len()
     }
 }
 

@@ -19,7 +19,7 @@ impl<T: PrimeField> SumcheckVerifier<T> {
         let last_value = *evaluation_values.last().unwrap();
 
         *initial_polynomial
-            .evaluate(evaluation_values)
+            .evaluate(&evaluation_values)
             .get_evaluation_points()
             .first()
             .unwrap()
