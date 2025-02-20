@@ -17,7 +17,7 @@ pub struct SumcheckProver<T: PrimeField> {
 }
 
 impl<T: PrimeField> SumcheckProver<T> {
-    // this generates a set of points to partially evaluate a polynomial
+    // this generates a random challenge and returns points to partially evaluate a polynomial at.
     fn generate_evaluation_points(
         transcript: &mut Transcript<T>,
         variables_length: usize,
@@ -66,6 +66,16 @@ impl<T: PrimeField> SumcheckProver<T> {
                 polynomial.number_of_variables(),
             ),
         };
+
+        // The steps for generating the univariate round polys differ based on the type of initial polynomial
+        // => In the case of a sum polynomial,
+        //    - We get the degree of the sum polynomial and partially evaluate the variable of concern at d+1 points.
+        //    - We then reduce and sum at each step to get single evaluation points at which we interpolate at to get a univariate.
+
+        // => In the case of a regular Multilinear poly,
+        //    - We keep the variable of concern constant, and we then we partially evaluate the other variables over the boolean hypercube.
+        //    - Then evaluate the f(variable) at d+1 points and sum up the values.
+        //    - The trick while using multilinear polynomials is that you can half the array and sum up evaluation points.
 
         // keep adding current polynomial step and sum to the round_polys vec
         (0..number_of_variables).for_each(|_i| {
@@ -140,7 +150,7 @@ impl<T: PrimeField> SumcheckProver<T> {
         (round_polys, random_challenges)
     }
 
-    // This creates a sum check proof struct that with the round_polys generated and an initial claim sum
+    // This creates a sum check proof, with the round_polys generated and an initial claim sum
     pub fn generate_sumcheck_proof(init_polynomial: &MultiLinearPolynomial<T>) -> SumCheckProof<T> {
         let mut transcript = Transcript::new();
 

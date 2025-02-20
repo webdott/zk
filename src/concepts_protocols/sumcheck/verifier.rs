@@ -26,6 +26,7 @@ impl<T: PrimeField> SumcheckVerifier<T> {
             == final_univariate_poly.evaluate(last_value.expect("Last value is empty"))
     }
 
+    // This bit does the partial verification for a proof minus the oracle check.
     pub fn partial_verify(
         proof: &SumCheckProof<T>,
         transcript: &mut Transcript<T>,
@@ -73,9 +74,10 @@ impl<T: PrimeField> SumcheckVerifier<T> {
             return false;
         }
 
-        let (partial_verify, _, evaluation_values) = Self::partial_verify(&proof, &mut transcript);
+        let (partially_verified, _, evaluation_values) =
+            Self::partial_verify(&proof, &mut transcript);
 
-        if !partial_verify {
+        if !partially_verified {
             return false;
         }
 
