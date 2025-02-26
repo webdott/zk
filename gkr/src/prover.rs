@@ -8,7 +8,7 @@ use sumcheck::prover::SumcheckProver;
 use crate::gkr_protocol::GKRProof;
 use crate::utils::{get_evaluated_muli_addi_at_a, get_folded_claim_sum, get_folded_polys};
 
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
 use std::marker::PhantomData;
 
 pub struct GKRProver<T: PrimeField> {
@@ -91,6 +91,12 @@ impl<T: PrimeField> GKRProver<T> {
                             .unwrap(),
                     );
 
+                    // commit w's evaluated at rb and rc
+                    transcript.append_n(&[
+                        &w_i_b_eval.into_bigint().to_bytes_le(),
+                        &w_i_c_eval.into_bigint().to_bytes_le(),
+                    ]);
+
                     let (alpha, beta) =
                         (transcript.sample_challenge(), transcript.sample_challenge());
 
@@ -98,6 +104,7 @@ impl<T: PrimeField> GKRProver<T> {
                     let (new_muli_b_c, new_addi_b_c) =
                         get_folded_polys(&alpha, &beta, muli_a_b_c, addi_a_b_c, r_b, r_c);
 
+                    // append the evaluations to send to the verifier
                     w_polys_evals.push((*w_i_b_eval, *w_i_c_eval));
 
                     (

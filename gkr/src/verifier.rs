@@ -6,7 +6,7 @@ use sumcheck::verifier::SumcheckVerifier;
 use crate::gkr_protocol::GKRProof;
 use crate::utils::{get_evaluated_muli_addi_at_a, get_folded_polys};
 
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
 use std::marker::PhantomData;
 
 pub struct GKRVerifier<T: PrimeField> {
@@ -95,6 +95,12 @@ impl<T: PrimeField> GKRVerifier<T> {
             } else {
                 proof.w_polys_evals[layer_idx]
             };
+
+            // commit w's evaluated at rb and rc
+            transcript.append_n(&[
+                &next_w_i_b_eval.into_bigint().to_bytes_le(),
+                &next_w_i_c_eval.into_bigint().to_bytes_le(),
+            ]);
 
             let fbc_eval = (*new_addi_b_c_eval * (next_w_i_b_eval + next_w_i_c_eval))
                 + (*new_muli_b_c_eval * (next_w_i_b_eval * next_w_i_c_eval));

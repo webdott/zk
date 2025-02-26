@@ -21,6 +21,10 @@ impl<T: PrimeField> Transcript<T> {
         Update::update(&mut self.hasher, data);
     }
 
+    pub fn append_n(&mut self, data: &[&[u8]]) {
+        data.iter().for_each(|f| self.append(*f));
+    }
+
     pub fn sample_challenge(&mut self) -> T {
         // uses the current hasher and generates a field value from it
         let hash_result = self.hasher.clone().finalize();
@@ -52,6 +56,10 @@ impl<T: PrimeField, F: GenericHashFunctionTrait> GenericTranscript<T, F> {
 
     pub fn append(&mut self, data: &[u8]) {
         self.hash_function.absorb(data);
+    }
+
+    pub fn append_n(&mut self, data: &[&[u8]]) {
+        data.iter().for_each(|f| self.append(*f));
     }
 
     pub fn generate_challenge(&mut self) -> T {
