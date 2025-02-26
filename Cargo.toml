@@ -1,2 +1,2 @@
 [workspace]
-members = ["sumcheck", "arithmetic_circuit", "fft", "shamir", "fiat_shamir", "gkr", "polynomials"]
+members = ["sumcheck", "arithmetic_circuit", "fft", "shamir", "fiat_shamir", "gkr", "polynomials", "kzg"]
