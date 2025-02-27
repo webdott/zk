@@ -1,5 +1,5 @@
 use ark_ff::{BigInteger, PrimeField};
-use std::iter;
+use std::{iter, ops::Add};
 
 #[derive(Debug)]
 enum Operation {
@@ -167,7 +167,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
     }
 
     // Adds two polynomials of same variables together
-    pub fn add(&self, other: &MultiLinearPolynomial<T>) -> Self {
+    pub fn _add(&self, other: &MultiLinearPolynomial<T>) -> Self {
         if self.number_of_variables() != other.number_of_variables() {
             panic!("Polynomial must have the same length");
         };
@@ -191,6 +191,14 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
 
     pub fn w_mul(&self, other: &MultiLinearPolynomial<T>) -> MultiLinearPolynomial<T> {
         Self::operate_w(other, self, Operation::Mul)
+    }
+}
+
+impl<T: PrimeField> Add for MultiLinearPolynomial<T> {
+    type Output = Self;
+
+    fn add(self, other: MultiLinearPolynomial<T>) -> Self {
+        self._add(&other)
     }
 }
 
