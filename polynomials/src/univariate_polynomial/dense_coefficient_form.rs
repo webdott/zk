@@ -1,4 +1,5 @@
 use ark_ff::{BigInteger, PrimeField};
+use std::ops::{Add, Mul};
 use std::{cmp, mem};
 
 #[derive(Debug)]
@@ -62,10 +63,10 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
                 };
 
                 denominator *= T::from(x_points[i]) - T::from(x_points[j]);
-                numerator = numerator.mul(&int_poly)
+                numerator = numerator * int_poly
             }
 
-            res = res.add(&numerator.scalar_mul(y_points[i] / denominator));
+            res = res + (numerator.scalar_mul(y_points[i] / denominator));
         }
 
         res
@@ -88,7 +89,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
 
     // Multiply polynomials together
     // You get a polynomial with a degree of the highest degrees in each polynomial multiplied together
-    pub fn mul(&self, p2: &Self) -> Self {
+    pub fn _mul(&self, p2: &Self) -> Self {
         let len_1 = self.coefficients.len();
         let len_2 = p2.coefficients.len();
 
@@ -124,7 +125,7 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
 
     // Add polynomials together
     // You get a polynomial with a degree of the highest degree in any of the polynomial
-    pub fn add(&self, p2: &Self) -> Self {
+    pub fn _add(&self, p2: &Self) -> Self {
         let len_1 = self.coefficients.len();
         let len_2 = p2.coefficients.len();
 
@@ -163,6 +164,22 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     }
 }
 
+impl<T: PrimeField> Add for UnivariatePolynomial<T> {
+    type Output = Self;
+
+    fn add(self, other: UnivariatePolynomial<T>) -> Self {
+        self._add(&other)
+    }
+}
+
+impl<T: PrimeField> Mul for UnivariatePolynomial<T> {
+    type Output = Self;
+
+    fn mul(self, p2: UnivariatePolynomial<T>) -> Self {
+        self._mul(&p2)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -182,7 +199,7 @@ mod test {
             UnivariatePolynomial::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(4)]);
 
         assert_eq!(
-            poly1.mul(&poly2).coefficients,
+            (poly1 * poly2).coefficients,
             vec![
                 Fq::from(0),
                 Fq::from(0),

@@ -123,8 +123,10 @@ impl<T: PrimeField> SumcheckProver<T> {
                 )
             }
 
-            transcript.append(&claimed_sum.into_bigint().to_bytes_le());
-            transcript.append(&evaluated_polynomial_over_boolean_hypercube.to_bytes());
+            transcript.append_n(&[
+                &claimed_sum.into_bigint().to_bytes_le(),
+                &evaluated_polynomial_over_boolean_hypercube.to_bytes(),
+            ]);
 
             if let Some(sum_poly) = &resulting_sum_polynomial {
                 let (challenge, points) = Self::generate_evaluation_points(

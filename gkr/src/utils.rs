@@ -33,15 +33,11 @@ pub fn get_folded_polys<T: PrimeField>(
         eval_points_rc[idx] = r_c[idx];
     });
 
-    let new_muli_b_c = muli_a_b_c
-        .evaluate(&eval_points_rb)
-        .scalar_mul(*alpha)
-        .add(&muli_a_b_c.evaluate(&eval_points_rc).scalar_mul(*beta));
+    let new_muli_b_c = (muli_a_b_c.evaluate(&eval_points_rb).scalar_mul(*alpha))
+        + (muli_a_b_c.evaluate(&eval_points_rc).scalar_mul(*beta));
 
-    let new_addi_b_c = addi_a_b_c
-        .evaluate(&eval_points_rb)
-        .scalar_mul(*alpha)
-        .add(&addi_a_b_c.evaluate(&eval_points_rc).scalar_mul(*beta));
+    let new_addi_b_c = (addi_a_b_c.evaluate(&eval_points_rb).scalar_mul(*alpha))
+        + (addi_a_b_c.evaluate(&eval_points_rc).scalar_mul(*beta));
 
     (new_muli_b_c, new_addi_b_c)
 }

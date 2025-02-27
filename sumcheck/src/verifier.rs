@@ -47,8 +47,10 @@ impl<T: PrimeField> SumcheckVerifier<T> {
                 return (false, curr_claimed_sum, evaluation_values);
             }
 
-            transcript.append(&curr_claimed_sum.into_bigint().to_bytes_le());
-            transcript.append(&evaluated_polynomial_over_boolean.to_bytes());
+            transcript.append_n(&[
+                &curr_claimed_sum.into_bigint().to_bytes_le(),
+                &evaluated_polynomial_over_boolean.to_bytes(),
+            ]);
 
             let challenge = transcript.sample_challenge();
 
