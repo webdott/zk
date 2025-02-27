@@ -1,5 +1,11 @@
 use ark_ff::PrimeField;
 
+// Given a set of tau values, we want to generate the lagrange basis array over the boolean hypercube for the number of variables
+// We use the check 0 and check one principle
+// E.g:
+// 000 => (1 - a) * (1 - b) * (1 - c)
+// 010 => (1 - a) * (b) * (1 - c)
+// 111 => (a) * (b) * (c)
 pub fn get_lagrange_basis_for_n_variables<T: PrimeField>(n: usize, taus: &[T]) -> Vec<T> {
     if n != taus.len() {
         panic!("Length of variables does not match the number of Taus given!")
@@ -13,8 +19,10 @@ pub fn get_lagrange_basis_for_n_variables<T: PrimeField>(n: usize, taus: &[T]) -
             let skip_value = 1 << (n - tau_idx - 1);
 
             if (i / skip_value) % 2 == 0 {
+                // if bit at variable index is 0 (turned off), use check-zero (1 - x)
                 lagrange_basis[i] *= T::one() - *tau;
             } else {
+                // else use check-one (x)
                 lagrange_basis[i] *= tau;
             }
         }
