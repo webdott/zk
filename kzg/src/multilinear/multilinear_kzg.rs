@@ -6,7 +6,7 @@ use ark_ff::PrimeField;
 // 000 => (1 - a) * (1 - b) * (1 - c)
 // 010 => (1 - a) * (b) * (1 - c)
 // 111 => (a) * (b) * (c)
-pub fn get_lagrange_basis_for_n_variables<T: PrimeField>(n: usize, taus: &[T]) -> Vec<T> {
+pub fn generate_lagrange_basis_for_n_variables<T: PrimeField>(n: usize, taus: &[T]) -> Vec<T> {
     if n != taus.len() {
         panic!("Length of variables does not match the number of Taus given!")
     }
@@ -39,7 +39,7 @@ mod tests {
     #[test]
     pub fn test_lagrange_basis_for_n_variables_with_same_length_of_taus() {
         assert_eq!(
-            get_lagrange_basis_for_n_variables(3, &[Fq::from(5), Fq::from(2), Fq::from(3)]),
+            generate_lagrange_basis_for_n_variables(3, &[Fq::from(5), Fq::from(2), Fq::from(3)]),
             vec![
                 Fq::from(-8),
                 Fq::from(12),
