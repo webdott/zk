@@ -350,6 +350,10 @@ dependencies = [
 [[package]]
 name = "kzg"
 version = "0.1.0"
+dependencies = [
+ "ark-bn254",
+ "ark-ff",
+]
 
 [[package]]
 name = "libc"
