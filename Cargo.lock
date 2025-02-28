@@ -41,6 +41,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ark-bls12-381"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3df4dcc01ff89867cd86b0da835f23c3f02738353aaee7dde7495af71363b8d5"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-serialize",
+ "ark-std",
+]
+
+[[package]]
 name = "ark-bn254"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -351,8 +363,11 @@ dependencies = [
 name = "kzg"
 version = "0.1.0"
 dependencies = [
+ "ark-bls12-381",
  "ark-bn254",
+ "ark-ec",
  "ark-ff",
+ "polynomials",
 ]
 
 [[package]]
