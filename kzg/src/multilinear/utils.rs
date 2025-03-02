@@ -1,7 +1,3 @@
-use polynomials::multilinear_polynomial::evaluation_form::{
-    BlowUpDirection, MultiLinearPolynomial,
-};
-
 use ark_ec::pairing::Pairing;
 use ark_ec::PrimeGroup;
 use ark_ff::PrimeField;
@@ -12,11 +8,8 @@ use ark_ff::PrimeField;
 // 000 => (1 - a) * (1 - b) * (1 - c)
 // 010 => (1 - a) * (b) * (1 - c)
 // 111 => (a) * (b) * (c)
-pub fn generate_lagrange_basis_for_n_variables<T: PrimeField>(n: usize, taus: &[T]) -> Vec<T> {
-    if n != taus.len() {
-        panic!("Length of variables does not match the number of Taus given!")
-    }
-
+pub fn generate_lagrange_basis_for_n_variables<T: PrimeField>(taus: &[T]) -> Vec<T> {
+    let n = taus.len();
     let length_of_lagrange_basis = 1 << n;
     let mut lagrange_basis = vec![T::one(); length_of_lagrange_basis];
 
@@ -45,25 +38,6 @@ pub fn encrypt_lagrange_basis<T: PrimeField, P: Pairing>(lagrange_basis: &[T]) -
         .collect::<Vec<P::G1>>()
 }
 
-pub fn blowup<T: PrimeField>(
-    no_of_vars: usize,
-    variable_idx: usize,
-    evaluation_points: &[T],
-) -> Vec<T> {
-    let mut blown_up_evals = MultiLinearPolynomial::blow_up_n_times(
-        BlowUpDirection::Left,
-        variable_idx,
-        &evaluation_points,
-    );
-    blown_up_evals = MultiLinearPolynomial::blow_up_n_times(
-        BlowUpDirection::Right,
-        no_of_vars - variable_idx - 1,
-        &blown_up_evals,
-    );
-
-    blown_up_evals
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -72,7 +46,7 @@ mod tests {
     #[test]
     pub fn test_lagrange_basis_for_n_variables_with_same_length_of_taus() {
         assert_eq!(
-            generate_lagrange_basis_for_n_variables(3, &[Fr::from(5), Fr::from(2), Fr::from(3)]),
+            generate_lagrange_basis_for_n_variables(&[Fr::from(5), Fr::from(2), Fr::from(3)]),
             vec![
                 Fr::from(-8),
                 Fr::from(12),

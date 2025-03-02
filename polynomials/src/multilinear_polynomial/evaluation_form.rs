@@ -60,7 +60,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         let mut y1_index = 0;
         let half_length = self.evaluation_points.len() / 2;
         let mut y1_y2_indexes = Vec::with_capacity(half_length);
-        let target = 1 << (self.number_of_variables() as usize) - 1 - variable_idx;
+        let target = (1 << (self.number_of_variables() as usize)) - 1 - variable_idx;
 
         (0..half_length).for_each(|_| {
             let y2_index = self.get_flipped_bit_with_bitwise_or(variable_idx, y1_index);
@@ -106,6 +106,9 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         Self::new(&result_eval_points)
     }
 
+    // This repeats the evaluation points as a whole twice.
+    // Equivalent to adding 0 as the coefficient of missing variables at the back
+    // E.g. 4b => 0a + 4b
     fn blowup_left(evaluation_points: &[T]) -> Vec<T> {
         let mut blown_up_points = Vec::from(evaluation_points);
         blown_up_points.extend_from_slice(evaluation_points);
@@ -113,6 +116,9 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         blown_up_points
     }
 
+    // This repeats each evaluation point twice side-by-side
+    // Equivalent to adding 0 as the coefficient of missing variables in front
+    // E.g. 4a => 4a + 0b
     fn blowup_right(evaluation_points: &[T]) -> Vec<T> {
         let mut blown_up_points = Vec::with_capacity(evaluation_points.len() * 2);
 
@@ -243,6 +249,11 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         Self::new(&new_evaluation_points)
     }
 
+    // Dividing a polynomial at a variable point gives you the *quotient* and *remainder*
+    // The quotient can be gotten by finding the two points at which the variable switches (from 0 to 1)
+    //    - Then subtract the evaluation points at the indexes (y2 - y1)
+
+    // The remainder can be gotten by partially evaluating the polynomial at the variables r.
     pub fn compute_quotient_remainder(&self, divisor: &T, variable_index: usize) -> (Vec<T>, Self) {
         let y1_y2_indexes = self.get_y1_y2_indexes(variable_index);
 
@@ -255,7 +266,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
                     self.evaluation_points[*y2_index],
                 );
 
-                y1 - y2
+                y2 - y1
             })
             .collect::<Vec<_>>();
 
