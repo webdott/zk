@@ -1,6 +1,8 @@
-use ark_ec::pairing::Pairing;
-use polynomials::multilinear_polynomial::evaluation_form::MultiLinearPolynomial;
+use polynomials::multilinear_polynomial::evaluation_form::{
+    BlowUpDirection, MultiLinearPolynomial,
+};
 
+use ark_ec::pairing::Pairing;
 use ark_ec::PrimeGroup;
 use ark_ff::PrimeField;
 
@@ -43,33 +45,29 @@ pub fn encrypt_lagrange_basis<T: PrimeField, P: Pairing>(lagrange_basis: &[T]) -
         .collect::<Vec<P::G1>>()
 }
 
-// Commitment is gotten by doing an element wise multiplication between encrypted lagrange basis and the multilinear polynomial
-pub fn generate_commitment<T: PrimeField, P: Pairing>(
-    polynomial: &MultiLinearPolynomial<T>,
-    taus: &[T],
-) -> P::G1 {
-    let no_of_polynomial_variables = polynomial.number_of_variables() as usize;
+pub fn blowup<T: PrimeField>(
+    no_of_vars: usize,
+    variable_idx: usize,
+    evaluation_points: &[T],
+) -> Vec<T> {
+    let mut blown_up_evals = MultiLinearPolynomial::blow_up_n_times(
+        BlowUpDirection::Left,
+        variable_idx,
+        &evaluation_points,
+    );
+    blown_up_evals = MultiLinearPolynomial::blow_up_n_times(
+        BlowUpDirection::Right,
+        no_of_vars - variable_idx - 1,
+        &blown_up_evals,
+    );
 
-    if no_of_polynomial_variables != taus.len() {
-        panic!("Number of variables does not match the number of Taus given!")
-    };
-
-    let lagrange_basis = generate_lagrange_basis_for_n_variables(no_of_polynomial_variables, taus);
-    let encrypted_lagrange_basis = encrypt_lagrange_basis::<T, P>(&lagrange_basis);
-    let polynomial_evals = polynomial.get_evaluation_points();
-
-    let commitment_array = (0..encrypted_lagrange_basis.len())
-        .map(|i| encrypted_lagrange_basis[i].mul_bigint(polynomial_evals[i].into_bigint()))
-        .collect::<Vec<_>>();
-
-    commitment_array.iter().sum::<P::G1>()
+    blown_up_evals
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ark_bls12_381::{Bls12_381, Fr, G1Affine};
-    use ark_ec::AffineRepr;
+    use ark_bls12_381::Fr;
 
     #[test]
     pub fn test_lagrange_basis_for_n_variables_with_same_length_of_taus() {
@@ -85,28 +83,6 @@ mod tests {
                 Fr::from(-20),
                 Fr::from(30),
             ]
-        )
-    }
-
-    #[test]
-    pub fn test_generate_commitment() {
-        let commitment = generate_commitment::<Fr, Bls12_381>(
-            &MultiLinearPolynomial::new(&vec![
-                Fr::from(0),
-                Fr::from(4),
-                Fr::from(0),
-                Fr::from(4),
-                Fr::from(0),
-                Fr::from(4),
-                Fr::from(3),
-                Fr::from(7),
-            ]),
-            &[Fr::from(5), Fr::from(2), Fr::from(3)],
-        );
-
-        assert_eq!(
-            commitment,
-            G1Affine::generator().mul_bigint(Fr::from(42).into_bigint())
         )
     }
 }

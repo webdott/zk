@@ -1,10 +1,15 @@
 use ark_ff::{BigInteger, PrimeField};
-use std::{iter, ops::Add};
+use std::ops::Add;
 
 #[derive(Debug)]
 enum Operation {
     Add,
     Mul,
+}
+
+pub enum BlowUpDirection {
+    Left,
+    Right,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -25,18 +30,6 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         }
     }
 
-    pub fn scalar_mul(&self, scalar: T) -> Self {
-        Self::new(&self.evaluation_points.iter().map(|e| *e * scalar).collect())
-    }
-
-    pub fn get_evaluation_points(&self) -> &Vec<T> {
-        &self.evaluation_points
-    }
-
-    pub fn number_of_variables(&self) -> u32 {
-        self.evaluation_points.len().ilog2()
-    }
-
     // Given the index where the bit in question is turned off, return flipped index
     fn get_flipped_bit_with_bitwise_or(
         &self,
@@ -48,21 +41,8 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         number_to_flip | (1 << power)
     }
 
-    pub fn partially_evaluate(&self, variable: (usize, T)) -> Self {
-        // interpolate + evaluate
-        // y1 + r(y2 - y1)
-        // where:
-        // y1 -> first point
-        // y2 -> second point
-        // r -> evaluation point
-
-        let evaluation_length = self.evaluation_points.len();
-        let new_evaluation_points_length = evaluation_length / 2;
-
-        let mut y1_index = 0;
-        let target = 1 << (self.number_of_variables() as usize) - 1 - variable.0;
-
-        // This gets the different pairings for y1 and y2.
+    fn get_y1_y2_indexes(&self, variable_idx: usize) -> Vec<(usize, usize)> {
+        // This gets the different pairing indexes for y1 and y2.
         // Starting from 0, we can always get the next bit at which that bit is turned on
         // We basically get all the indexes where the position of the variable is turned off, set that to y1,
         // We also find where it's turned on and set that to y2
@@ -77,20 +57,118 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         // 1 1 1, -> y2_3
         // From pattern, you can see that we skip every 2^power_index of variable.
 
-        let new_evaluation_points = iter::repeat(())
-            .map(|()| {
-                let y2_index = self.get_flipped_bit_with_bitwise_or(variable.0, y1_index);
-                let y1 = &self.evaluation_points[y1_index];
-                let y2 = &self.evaluation_points[y2_index];
+        let mut y1_index = 0;
+        let half_length = self.evaluation_points.len() / 2;
+        let mut y1_y2_indexes = Vec::with_capacity(half_length);
+        let target = 1 << (self.number_of_variables() as usize) - 1 - variable_idx;
 
-                // Check if we should skip for next y1 or just continue to the next one
-                y1_index = if (y1_index + 1) % target == 0 {
-                    y2_index + 1
-                } else {
-                    y1_index + 1
-                };
+        (0..half_length).for_each(|_| {
+            let y2_index = self.get_flipped_bit_with_bitwise_or(variable_idx, y1_index);
 
-                *y1 + ((*y2 - *y1) * variable.1)
+            y1_y2_indexes.push((y1_index, y2_index));
+
+            // Check if we should skip for next y1 or just continue to the next one
+            y1_index = if (y1_index + 1) % target == 0 {
+                y2_index + 1
+            } else {
+                y1_index + 1
+            };
+        });
+
+        y1_y2_indexes
+    }
+
+    fn operate_w(
+        w_b: &MultiLinearPolynomial<T>,
+        w_c: &MultiLinearPolynomial<T>,
+        operation: Operation,
+    ) -> MultiLinearPolynomial<T> {
+        let (evals_b, evals_c) = (w_b.get_evaluation_points(), w_c.get_evaluation_points());
+        let (w_b_len, w_c_len) = (evals_b.len(), evals_c.len());
+        let result_evaluation_length = w_b_len * w_c_len;
+        let mut result_eval_points = vec![T::from(0); result_evaluation_length];
+
+        // This performs tensor addition or multiplication between two polynomials of different variables
+        // This variant uses tensor addition and multiplication:
+        // W(b) * W(c) =>
+        // [2, 2] * [3, 2] => [2 * 3, 2 * 2, 2 * 3, 2 * 2] => [6, 4, 6, 4]
+        (0..result_evaluation_length)
+            .enumerate()
+            .for_each(|(i, _)| {
+                let (idx_b, idx_c) = (i / w_b_len, i % w_c_len);
+
+                match operation {
+                    Operation::Add => result_eval_points[i] = evals_b[idx_b] + evals_c[idx_c],
+                    Operation::Mul => result_eval_points[i] = evals_b[idx_b] * evals_c[idx_c],
+                }
+            });
+
+        Self::new(&result_eval_points)
+    }
+
+    fn blowup_left(evaluation_points: &[T]) -> Vec<T> {
+        let mut blown_up_points = Vec::from(evaluation_points);
+        blown_up_points.extend_from_slice(evaluation_points);
+
+        blown_up_points
+    }
+
+    fn blowup_right(evaluation_points: &[T]) -> Vec<T> {
+        let mut blown_up_points = Vec::with_capacity(evaluation_points.len() * 2);
+
+        evaluation_points.iter().for_each(|e| {
+            blown_up_points.push(*e);
+            blown_up_points.push(*e);
+        });
+
+        blown_up_points
+    }
+
+    pub fn blow_up_n_times(dir: BlowUpDirection, n: usize, evaluation_points: &[T]) -> Vec<T> {
+        let mut running_evaluation_points = Vec::from(evaluation_points);
+
+        for _ in 0..n {
+            running_evaluation_points = match dir {
+                BlowUpDirection::Left => Self::blowup_left(&running_evaluation_points),
+                BlowUpDirection::Right => Self::blowup_right(&running_evaluation_points),
+            }
+        }
+
+        running_evaluation_points
+    }
+
+    pub fn scalar_mul(&self, scalar: T) -> Self {
+        Self::new(&self.evaluation_points.iter().map(|e| *e * scalar).collect())
+    }
+
+    pub fn get_evaluation_points(&self) -> &Vec<T> {
+        &self.evaluation_points
+    }
+
+    pub fn number_of_variables(&self) -> u32 {
+        self.evaluation_points.len().ilog2()
+    }
+
+    pub fn partially_evaluate(&self, variable: (usize, T)) -> Self {
+        // interpolate + evaluate
+        // y1 + r(y2 - y1)
+        // where:
+        // y1 -> first point
+        // y2 -> second point
+        // r -> evaluation point
+        let new_evaluation_points_length = self.evaluation_points.len() / 2;
+        let y1_y2_indexes = self.get_y1_y2_indexes(variable.0);
+
+        // Given the various pairing indexes for y1 and y2, carry out formula
+        let new_evaluation_points = y1_y2_indexes
+            .iter()
+            .map(|(y1_index, y2_index)| {
+                let (y1, y2) = (
+                    self.evaluation_points[*y1_index],
+                    self.evaluation_points[*y2_index],
+                );
+
+                y1 + ((y2 - y1) * variable.1)
             })
             .take(new_evaluation_points_length)
             .collect();
@@ -138,34 +216,6 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         self.evaluation_points.iter().sum()
     }
 
-    fn operate_w(
-        w_b: &MultiLinearPolynomial<T>,
-        w_c: &MultiLinearPolynomial<T>,
-        operation: Operation,
-    ) -> MultiLinearPolynomial<T> {
-        let (evals_b, evals_c) = (w_b.get_evaluation_points(), w_c.get_evaluation_points());
-        let (w_b_len, w_c_len) = (evals_b.len(), evals_c.len());
-        let result_evaluation_length = w_b_len * w_c_len;
-        let mut result_eval_points = vec![T::from(0); result_evaluation_length];
-
-        // This performs tensor addition or multiplication between two polynomials of different variables
-        // This variant uses tensor addition and multiplication:
-        // W(b) * W(c) =>
-        // [2, 2] * [3, 2] => [2 * 3, 2 * 2, 2 * 3, 2 * 2] => [6, 4, 6, 4]
-        (0..result_evaluation_length)
-            .enumerate()
-            .for_each(|(i, _)| {
-                let (idx_b, idx_c) = (i / w_b_len, i % w_c_len);
-
-                match operation {
-                    Operation::Add => result_eval_points[i] = evals_b[idx_b] + evals_c[idx_c],
-                    Operation::Mul => result_eval_points[i] = evals_b[idx_b] * evals_c[idx_c],
-                }
-            });
-
-        Self::new(&result_eval_points)
-    }
-
     // Adds two polynomials of same variables together
     pub fn _add(&self, other: &MultiLinearPolynomial<T>) -> Self {
         if self.number_of_variables() != other.number_of_variables() {
@@ -180,6 +230,36 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         });
 
         Self::new(&new_evals)
+    }
+
+    // Performs F(x) - V operation
+    pub fn minus(&self, other: &T) -> Self {
+        let new_evaluation_points = self
+            .evaluation_points
+            .iter()
+            .map(|val| *val - *other)
+            .collect::<Vec<_>>();
+
+        Self::new(&new_evaluation_points)
+    }
+
+    pub fn compute_quotient_remainder(&self, divisor: &T, variable_index: usize) -> (Vec<T>, Self) {
+        let y1_y2_indexes = self.get_y1_y2_indexes(variable_index);
+
+        let remainder = self.partially_evaluate((variable_index, *divisor));
+        let quotient = y1_y2_indexes
+            .iter()
+            .map(|(y1_index, y2_index)| {
+                let (y1, y2) = (
+                    self.evaluation_points[*y1_index],
+                    self.evaluation_points[*y2_index],
+                );
+
+                y1 - y2
+            })
+            .collect::<Vec<_>>();
+
+        (quotient, remainder)
     }
 
     pub fn w_add(
@@ -341,5 +421,38 @@ mod test {
                 Fq::from(6)
             ]
         );
+    }
+
+    #[test]
+    pub fn test_blowup() {
+        let init_evaluation_points = &[Fq::from(0), Fq::from(3)];
+        let blown_up_left_values = MultiLinearPolynomial::blow_up_n_times(
+            BlowUpDirection::Left,
+            1,
+            init_evaluation_points,
+        );
+
+        assert_eq!(
+            blown_up_left_values,
+            vec![Fq::from(0), Fq::from(3), Fq::from(0), Fq::from(3)]
+        );
+
+        assert_eq!(
+            MultiLinearPolynomial::blow_up_n_times(
+                BlowUpDirection::Right,
+                1,
+                &blown_up_left_values
+            ),
+            vec![
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(3),
+                Fq::from(3),
+                Fq::from(0),
+                Fq::from(0),
+                Fq::from(3),
+                Fq::from(3),
+            ]
+        )
     }
 }
