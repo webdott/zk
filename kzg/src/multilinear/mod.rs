@@ -1,2 +1,5 @@
-pub mod multilinear_kzg;
-pub mod multilinear_kzg_with_plain_numbers;
+mod kzg_protocol;
+mod prover;
+mod trusted_setup;
+mod utils;
+mod verifier;
