@@ -1,5 +1,5 @@
-mod kzg_protocol;
-mod prover;
-mod trusted_setup;
-mod utils;
-mod verifier;
+pub mod kzg_protocol;
+pub mod prover;
+pub mod trusted_setup;
+pub mod utils;
+pub mod verifier;

@@ -23,6 +23,11 @@ mod tests {
         ]);
         let openings = vec![Fr::from(6), Fr::from(4), Fr::from(0)];
 
+        let commitment = MultilinearKZGProver::<Fr, Bls12_381>::generate_commitment(
+            &polynomial,
+            &trusted_setup.encrypted_lagrange_basis,
+        );
+
         let proof: MultilinearKZGProof<Fr, Bls12_381> = MultilinearKZGProver::generate_proof(
             &openings,
             &trusted_setup.encrypted_lagrange_basis,
@@ -30,7 +35,8 @@ mod tests {
         );
 
         assert!(MultilinearKZGVerifier::verify_proof(
-            proof,
+            &commitment,
+            &proof,
             &openings,
             &trusted_setup.encrypted_taus
         ));

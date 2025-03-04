@@ -8,18 +8,17 @@ use ark_ec::PrimeGroup;
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
 
+#[derive(Debug)]
 pub struct MultilinearKZGProof<T: PrimeField, P: Pairing> {
     _marker: PhantomData<T>,
-    pub commitment: P::G1,
     pub v: T,
     pub q_taus: Vec<P::G1>,
 }
 
 impl<T: PrimeField, P: Pairing> MultilinearKZGProof<T, P> {
-    pub fn new(commitment: P::G1, v: T, q_taus: Vec<P::G1>) -> Self {
+    pub fn new(v: T, q_taus: Vec<P::G1>) -> Self {
         Self {
             _marker: PhantomData,
-            commitment,
             v,
             q_taus,
         }
@@ -62,7 +61,6 @@ impl<T: PrimeField, P: Pairing> MultilinearKZGProver<T, P> {
         encrypted_lagrange_basis: &[P::G1],
         polynomial: &MultiLinearPolynomial<T>,
     ) -> MultilinearKZGProof<T, P> {
-        let commitment = Self::generate_commitment(polynomial, encrypted_lagrange_basis);
         let opening_points = openings.iter().map(|val| Some(*val)).collect::<Vec<_>>();
         let v_poly = polynomial.evaluate(&opening_points);
 
@@ -79,9 +77,10 @@ impl<T: PrimeField, P: Pairing> MultilinearKZGProver<T, P> {
             let (mut quotient, remainder) = dividend.compute_quotient_remainder(opening, 0);
 
             dividend = remainder;
+
             quotient = MultiLinearPolynomial::blow_up_n_times(
                 BlowUpDirection::Left,
-                max(idx + 1, openings.len() - (quotient.len().ilog2()) as usize),
+                max(idx + 1, openings.len() - quotient.len().ilog2() as usize),
                 &quotient,
             );
 
@@ -93,11 +92,7 @@ impl<T: PrimeField, P: Pairing> MultilinearKZGProver<T, P> {
             quotients.push(quotient_at_tau);
         }
 
-        MultilinearKZGProof::new(
-            commitment,
-            *v_poly.get_evaluation_points().first().unwrap(),
-            quotients,
-        )
+        MultilinearKZGProof::new(*v_poly.get_evaluation_points().first().unwrap(), quotients)
     }
 }
 
