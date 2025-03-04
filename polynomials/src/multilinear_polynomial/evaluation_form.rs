@@ -75,7 +75,6 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
             };
         });
 
-        dbg!(y1_y2_indexes.clone());
         y1_y2_indexes
     }
 
@@ -375,11 +374,6 @@ mod test {
     pub fn test_partially_evaluate_3_variables_incomplete_points() {
         //2ab + 3bc -> where c = 3
         let mlp = get_test_polynomial_2();
-
-        dbg!(
-            mlp.evaluate(&vec![None, None, Some(Fq::from(3))])
-                .evaluation_points
-        );
 
         assert_eq!(
             mlp.evaluate(&vec![None, None, Some(Fq::from(3))])
