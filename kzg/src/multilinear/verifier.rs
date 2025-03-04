@@ -12,7 +12,8 @@ pub struct MultilinearKZGVerifier<T: PrimeField, P: Pairing> {
 
 impl<T: PrimeField, P: Pairing> MultilinearKZGVerifier<T, P> {
     pub fn verify_proof(
-        proof: MultilinearKZGProof<T, P>,
+        commitment: &P::G1,
+        proof: &MultilinearKZGProof<T, P>,
         openings: &[T],
         encrypted_taus: &[P::G2],
     ) -> bool {
@@ -22,7 +23,7 @@ impl<T: PrimeField, P: Pairing> MultilinearKZGVerifier<T, P> {
         //f_tau - v  *  1  === ∑((tau_i - opening_i) * q_tau_i)
 
         let g1_v = P::G1::generator().mul_bigint(proof.v.into_bigint());
-        let f_tau_minus_v: P::G1 = proof.commitment - g1_v;
+        let f_tau_minus_v: P::G1 = *commitment - g1_v;
         let g2_1 = P::G2::generator().mul_bigint(T::one().into_bigint());
 
         let lhs = P::pairing(f_tau_minus_v, g2_1);

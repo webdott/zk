@@ -9,7 +9,6 @@ use std::marker::PhantomData;
 pub struct Circuit<T: PrimeField> {
     _marker: PhantomData<T>,
     layers: Vec<Vec<Gate>>,
-    layer_evaluations: Vec<MultiLinearPolynomial<T>>,
 }
 
 impl<T: PrimeField> Circuit<T> {
@@ -17,7 +16,6 @@ impl<T: PrimeField> Circuit<T> {
         Self {
             layers,
             _marker: PhantomData,
-            layer_evaluations: vec![],
         }
     }
 
@@ -36,7 +34,7 @@ impl<T: PrimeField> Circuit<T> {
 
     // This takes in a set of inputs and for each layer of gates we have, calculate the next set of inputs
     // The set of inputs are stored as evaluation layers for easy retrieval
-    pub fn evaluate_at_input(&mut self, inputs: Vec<T>) -> MultiLinearPolynomial<T> {
+    pub fn evaluate_at_input(&mut self, inputs: Vec<T>) -> Vec<MultiLinearPolynomial<T>> {
         let mut evaluation_layers = vec![MultiLinearPolynomial::new(&inputs)];
         let mut running_inputs = inputs;
 
@@ -57,12 +55,7 @@ impl<T: PrimeField> Circuit<T> {
             running_inputs = next_inputs;
         });
 
-        let output_poly =
-            MultiLinearPolynomial::new(evaluation_layers.last().unwrap().get_evaluation_points());
-
-        self.layer_evaluations = evaluation_layers;
-
-        output_poly
+        evaluation_layers
     }
 
     // This helps us to get the index at which a gate is present (turned on)
@@ -130,14 +123,17 @@ impl<T: PrimeField> Circuit<T> {
     }
 
     // After evaluation of the circuit, we can just get the polynomial of each w_layer
-    pub fn get_w_i(&self, layer_idx: usize) -> MultiLinearPolynomial<T> {
-        if layer_idx >= self.layer_evaluations.len() {
+    pub fn get_w_i(
+        &self,
+        layer_idx: usize,
+        layer_evaluations: &[MultiLinearPolynomial<T>],
+    ) -> MultiLinearPolynomial<T> {
+        if layer_idx >= layer_evaluations.len() {
             panic!("layer index out of bounds");
         }
 
         MultiLinearPolynomial::new(
-            self.layer_evaluations[self.layer_evaluations.len() - layer_idx - 1]
-                .get_evaluation_points(),
+            layer_evaluations[layer_evaluations.len() - layer_idx - 1].get_evaluation_points(),
         )
     }
 
@@ -160,7 +156,7 @@ mod tests {
     use super::*;
     use ark_bn254::Fq;
 
-    fn init_circuit_and_evaluate() -> Circuit<Fq> {
+    fn init_circuit_and_evaluate() -> (Vec<MultiLinearPolynomial<Fq>>, Circuit<Fq>) {
         let mut circuit = Circuit::new(vec![
             vec![
                 Gate::new(0, 1, Operation::Add),
@@ -169,28 +165,25 @@ mod tests {
             vec![Gate::new(0, 1, Operation::Add)],
         ]);
 
-        circuit.evaluate_at_input(vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]);
-
-        circuit
+        (
+            circuit.evaluate_at_input(vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]),
+            circuit,
+        )
     }
 
     #[test]
     pub fn arithmetic_gate_test() {
-        let circuit = init_circuit_and_evaluate();
+        let (circuit_evaluations, _) = init_circuit_and_evaluate();
 
         assert_eq!(
-            *circuit
-                .layer_evaluations
-                .last()
-                .unwrap()
-                .get_evaluation_points(),
+            *circuit_evaluations.last().unwrap().get_evaluation_points(),
             vec![Fq::from(15), Fq::from(0)]
         );
     }
 
     #[test]
     pub fn test_get_add_i() {
-        let circuit = init_circuit_and_evaluate();
+        let (_, circuit) = init_circuit_and_evaluate();
 
         let mut result_vec = vec![Fq::from(0); 32];
         result_vec[1] = Fq::from(1);
@@ -200,7 +193,7 @@ mod tests {
 
     #[test]
     pub fn test_get_mul_i() {
-        let circuit = init_circuit_and_evaluate();
+        let (_, circuit) = init_circuit_and_evaluate();
 
         let mut result_vec = vec![Fq::from(0); 32];
         result_vec[27] = Fq::from(1);

@@ -60,7 +60,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         let mut y1_index = 0;
         let half_length = self.evaluation_points.len() / 2;
         let mut y1_y2_indexes = Vec::with_capacity(half_length);
-        let target = (1 << (self.number_of_variables() as usize)) - 1 - variable_idx;
+        let target = 1 << ((self.number_of_variables() as usize) - 1 - variable_idx);
 
         (0..half_length).for_each(|_| {
             let y2_index = self.get_flipped_bit_with_bitwise_or(variable_idx, y1_index);
@@ -75,6 +75,7 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
             };
         });
 
+        dbg!(y1_y2_indexes.clone());
         y1_y2_indexes
     }
 
@@ -374,6 +375,11 @@ mod test {
     pub fn test_partially_evaluate_3_variables_incomplete_points() {
         //2ab + 3bc -> where c = 3
         let mlp = get_test_polynomial_2();
+
+        dbg!(
+            mlp.evaluate(&vec![None, None, Some(Fq::from(3))])
+                .evaluation_points
+        );
 
         assert_eq!(
             mlp.evaluate(&vec![None, None, Some(Fq::from(3))])

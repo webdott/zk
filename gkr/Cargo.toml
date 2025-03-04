@@ -8,5 +8,9 @@ ark-bn254 = "0.5.0"
 ark-ff = "0.5.0"
 polynomials = { path = "../polynomials" }
 arithmetic_circuit = { path = "../arithmetic_circuit" }
+kzg = { path = "../kzg" }
 sumcheck = { path = "../sumcheck" }
 fiat_shamir = { path = "../fiat_shamir" }
+ark-ec = "0.5.0"
+ark-bls12-381 = "0.5.0"
+tuple-conv = "1.0.1"
