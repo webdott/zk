@@ -22,7 +22,7 @@ impl<T: PrimeField> GKRProver<T> {
         inputs: &[T],
     ) -> GKRProof<T> {
         // Evaluate the polynomials at the inputs to be able to get w_polys on each layer
-        circuit.evaluate_at_input(Vec::from(inputs));
+        let circuit_evaluations = circuit.evaluate_at_input(Vec::from(inputs));
 
         // Initialize vecs to store the w_poly_evaluations and the sumcheck proofs at each step
         let (mut w_polys_evals, mut sum_check_proofs) = (
@@ -30,10 +30,12 @@ impl<T: PrimeField> GKRProver<T> {
             Vec::with_capacity(circuit.get_layer_count()),
         );
 
-        let length_of_rs = circuit.get_w_i(0).number_of_variables();
+        let length_of_rs = circuit
+            .get_w_i(0, &circuit_evaluations)
+            .number_of_variables();
 
         // This variable stores the w_poly for each layer
-        let mut running_layer_polynomial = circuit.get_w_i(0);
+        let mut running_layer_polynomial = circuit.get_w_i(0, &circuit_evaluations);
 
         // Commit to the output layer poly by appending to the transcript
         transcript.append(&running_layer_polynomial.to_bytes());
@@ -115,7 +117,7 @@ impl<T: PrimeField> GKRProver<T> {
                 }
             };
 
-            let next_w_i = circuit.get_w_i(layer_idx + 1);
+            let next_w_i = circuit.get_w_i(layer_idx + 1, &circuit_evaluations);
 
             // Generate f_b_c -> ( add_i(b, c) * W(b) + W(c) ) + ( mul_i(b, c) * W(b) * W(c) )
             let f_b_c = SumPolynomial::new(vec![
@@ -134,11 +136,15 @@ impl<T: PrimeField> GKRProver<T> {
                 SumcheckProver::generate_proof_for_partial_verify(claim_sum, f_b_c, transcript);
 
             random_values = random_points.iter().map(|point| Some(*point)).collect();
-            running_layer_polynomial = circuit.get_w_i(layer_idx + 1);
+            running_layer_polynomial = circuit.get_w_i(layer_idx + 1, &circuit_evaluations);
 
             sum_check_proofs.push(sumcheck_proof);
         }
 
-        GKRProof::new(circuit.get_w_i(0), w_polys_evals, sum_check_proofs)
+        GKRProof::new(
+            circuit.get_w_i(0, &circuit_evaluations),
+            w_polys_evals,
+            sum_check_proofs,
+        )
     }
 }
