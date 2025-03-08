@@ -5,6 +5,20 @@ pub struct Polynomial<T: FftField> {
 }
 
 impl<T: FftField> Polynomial<T> {
+    fn split_even_odd_sequences(sequence: &[T]) -> (Vec<T>, Vec<T>) {
+        let (mut even_sequence, mut odd_sequence) = (vec![], vec![]);
+
+        sequence.iter().enumerate().for_each(|(idx, num)| {
+            if idx % 2 == 0 {
+                even_sequence.push(*num);
+            } else {
+                odd_sequence.push(*num);
+            }
+        });
+
+        (even_sequence, odd_sequence)
+    }
+
     fn _fft(coefficients_or_values: &[T], is_inverse: bool) -> Vec<T> {
         // n = len of coefficients_or_values
         // ye = a0, a2, a4....an
@@ -24,18 +38,7 @@ impl<T: FftField> Polynomial<T> {
             return vec![coefficients_or_values[0]];
         }
 
-        let (mut even_sequence, mut odd_sequence) = (vec![], vec![]);
-
-        coefficients_or_values
-            .iter()
-            .enumerate()
-            .for_each(|(idx, num)| {
-                if idx % 2 == 0 {
-                    even_sequence.push(*num);
-                } else {
-                    odd_sequence.push(*num);
-                }
-            });
+        let (even_sequence, odd_sequence) = Self::split_even_odd_sequences(coefficients_or_values);
 
         // recurse to find the further ffts for even and odd sequences
         let (ye, yo) = (
