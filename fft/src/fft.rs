@@ -5,7 +5,21 @@ pub struct Polynomial<T: FftField> {
 }
 
 impl<T: FftField> Polynomial<T> {
-    fn fft(coefficients_or_values: &[T], is_inverse: bool) -> Vec<T> {
+    fn split_even_odd_sequences(sequence: &[T]) -> (Vec<T>, Vec<T>) {
+        let (mut even_sequence, mut odd_sequence) = (vec![], vec![]);
+
+        sequence.iter().enumerate().for_each(|(idx, num)| {
+            if idx % 2 == 0 {
+                even_sequence.push(*num);
+            } else {
+                odd_sequence.push(*num);
+            }
+        });
+
+        (even_sequence, odd_sequence)
+    }
+
+    fn _fft(coefficients_or_values: &[T], is_inverse: bool) -> Vec<T> {
         // n = len of coefficients_or_values
         // ye = a0, a2, a4....an
         // yo = a1, a3, a5....an-1
@@ -24,23 +38,12 @@ impl<T: FftField> Polynomial<T> {
             return vec![coefficients_or_values[0]];
         }
 
-        let (mut even_sequence, mut odd_sequence) = (vec![], vec![]);
-
-        coefficients_or_values
-            .iter()
-            .enumerate()
-            .for_each(|(idx, num)| {
-                if idx % 2 == 0 {
-                    even_sequence.push(*num);
-                } else {
-                    odd_sequence.push(*num);
-                }
-            });
+        let (even_sequence, odd_sequence) = Self::split_even_odd_sequences(coefficients_or_values);
 
         // recurse to find the further ffts for even and odd sequences
         let (ye, yo) = (
-            Self::fft(&even_sequence, is_inverse),
-            Self::fft(&odd_sequence, is_inverse),
+            Self::_fft(&even_sequence, is_inverse),
+            Self::_fft(&odd_sequence, is_inverse),
         );
 
         let root_of_unity = T::get_root_of_unity(n as u64);
@@ -70,14 +73,18 @@ impl<T: FftField> Polynomial<T> {
 
     // Perform Fast Fourier Transforms to convert Polynomial to Values (Samples) Representation
     // This can be done in O(nlogn) time to perform a linear O(n) operation in Sample like evaluation that would have originally taken O(n^2) in Coefficients form
-    pub fn transform_to_values(coefficients: &[T]) -> Vec<T> {
-        Self::fft(coefficients, false)
+
+    // Transform to evaluation form
+    pub fn fft(coefficients: &[T]) -> Vec<T> {
+        Self::_fft(coefficients, false)
     }
 
     // Perform inverse Fast Fourier Transform to convert Sample representation back to Coefficients
     // This can be done in O(nlogn) time as well to perform a linear O(n) operation in Coefficients form like Multiplication that would have originally taken O(n^2) in Sample form
-    pub fn transform_to_coefficients(values: &[T]) -> Vec<T> {
-        Self::fft(&values, true)
+
+    // Transform to Coefficient form
+    pub fn ifft(values: &[T]) -> Vec<T> {
+        Self::_fft(&values, true)
             .iter()
             .map(|x| *x / T::from(values.len() as u64))
             .collect()
@@ -92,8 +99,8 @@ mod test {
     #[test]
     pub fn test_fft_and_ifft() {
         let coefficients = vec![Fr::from(5), Fr::from(3), Fr::from(2), Fr::from(1)];
-        let values = Polynomial::transform_to_values(&coefficients);
-        let result_coefficients = Polynomial::transform_to_coefficients(&values);
+        let values = Polynomial::fft(&coefficients);
+        let result_coefficients = Polynomial::ifft(&values);
 
         assert_eq!(result_coefficients, coefficients,)
     }
