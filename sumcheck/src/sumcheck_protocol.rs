@@ -13,6 +13,7 @@ mod test {
     use super::*;
 
     use fiat_shamir::transcript::Transcript;
+    use field_tracker::{print_summary, Ft};
     use polynomials::multilinear_polynomial::evaluation_form::MultiLinearPolynomial;
     use polynomials::product_polynomial::ProductPolynomial;
     use polynomials::sum_polynomial::SumPolynomial;
@@ -20,7 +21,7 @@ mod test {
     use crate::prover::SumcheckProver;
     use crate::verifier::SumcheckVerifier;
 
-    use ark_bn254::Fq;
+    type Fq = Ft!(ark_bn254::Fq);
 
     #[test]
     fn test_full_sumcheck_pass() {
@@ -43,6 +44,8 @@ mod test {
             &initial_polynomial,
             sum_check_proof
         ));
+
+        print_summary!();
     }
 
     #[test]
@@ -74,6 +77,8 @@ mod test {
             ),
             false
         );
+
+        print_summary!();
     }
 
     #[test]
@@ -101,5 +106,7 @@ mod test {
         );
 
         assert!(SumcheckVerifier::partial_verify(&sum_check_proof, &mut Transcript::new()).0);
+
+        print_summary!();
     }
 }
