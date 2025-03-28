@@ -1,4 +1,5 @@
 use ark_ff::{BigInteger, PrimeField};
+use field_tracker::{end_tscope, start_tscope};
 use std::ops::Add;
 
 #[derive(Debug)]
@@ -83,6 +84,8 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
         w_c: &MultiLinearPolynomial<T>,
         operation: Operation,
     ) -> MultiLinearPolynomial<T> {
+        start_tscope!("Operate on W polynomial");
+
         let (evals_b, evals_c) = (w_b.get_evaluation_points(), w_c.get_evaluation_points());
         let (w_b_len, w_c_len) = (evals_b.len(), evals_c.len());
         let result_evaluation_length = w_b_len * w_c_len;
@@ -102,6 +105,8 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
                     Operation::Mul => result_eval_points[i] = evals_b[idx_b] * evals_c[idx_c],
                 }
             });
+
+        end_tscope!();
 
         Self::new(&result_eval_points)
     }
@@ -156,6 +161,8 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
     }
 
     pub fn partially_evaluate(&self, variable: (usize, T)) -> Self {
+        start_tscope!("Partially evaluate polynomial");
+
         // interpolate + evaluate
         // y1 + r(y2 - y1)
         // where:
@@ -179,17 +186,21 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
             .take(new_evaluation_points_length)
             .collect();
 
+        end_tscope!();
+
         Self::new(&new_evaluation_points)
     }
 
     pub fn evaluate(&self, points: &[Option<T>]) -> Self {
+        start_tscope!("Evaluate polynomial");
+
         if points.len() != self.number_of_variables() as usize {
             panic!("points length does not match number of variables");
         }
 
         let mut done = 0;
 
-        points.iter().enumerate().fold(
+        let evaluated_result = points.iter().enumerate().fold(
             MultiLinearPolynomial::new(&self.evaluation_points),
             |acc, (idx, point)| {
                 let mlp = match point {
@@ -204,7 +215,11 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
 
                 mlp
             },
-        )
+        );
+
+        end_tscope!();
+
+        evaluated_result
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -224,6 +239,8 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
 
     // Adds two polynomials of same variables together
     pub fn _add(&self, other: &MultiLinearPolynomial<T>) -> Self {
+        start_tscope!("Add polynomial");
+
         if self.number_of_variables() != other.number_of_variables() {
             panic!("Polynomial must have the same length");
         };
@@ -235,16 +252,22 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
                 self.get_evaluation_points()[idx] + other.get_evaluation_points()[idx];
         });
 
+        end_tscope!();
+
         Self::new(&new_evals)
     }
 
     // Performs F(x) - V operation
     pub fn minus(&self, other: &T) -> Self {
+        start_tscope!("Minus polynomial");
+
         let new_evaluation_points = self
             .evaluation_points
             .iter()
             .map(|val| *val - *other)
             .collect::<Vec<_>>();
+
+        end_tscope!();
 
         Self::new(&new_evaluation_points)
     }
@@ -255,6 +278,8 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
 
     // The remainder can be gotten by partially evaluating the polynomial at the variables r.
     pub fn compute_quotient_remainder(&self, divisor: &T, variable_index: usize) -> (Vec<T>, Self) {
+        start_tscope!("Compute quotient remainder");
+
         let y1_y2_indexes = self.get_y1_y2_indexes(variable_index);
 
         let remainder = self.partially_evaluate((variable_index, *divisor));
@@ -269,6 +294,8 @@ impl<T: PrimeField> MultiLinearPolynomial<T> {
                 y2 - y1
             })
             .collect::<Vec<_>>();
+
+        end_tscope!();
 
         (quotient, remainder)
     }
@@ -296,7 +323,10 @@ impl<T: PrimeField> Add for MultiLinearPolynomial<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ark_bn254::Fq;
+
+    use field_tracker::{print_summary, Ft};
+
+    type Fq = Ft!(ark_bn254::Fq);
 
     fn get_test_polynomial() -> MultiLinearPolynomial<Fq> {
         MultiLinearPolynomial::new(&vec![
@@ -347,6 +377,8 @@ mod test {
             .evaluation_points,
             vec![Fq::from(120)],
         );
+
+        print_summary!();
     }
 
     #[test]
@@ -368,6 +400,8 @@ mod test {
                 Fq::from(36)
             ],
         );
+
+        print_summary!();
     }
 
     #[test]
@@ -380,6 +414,8 @@ mod test {
                 .evaluation_points,
             vec![Fq::from(0), Fq::from(9), Fq::from(0), Fq::from(11)],
         );
+
+        print_summary!();
     }
 
     #[test]
@@ -432,6 +468,8 @@ mod test {
                 Fq::from(6)
             ]
         );
+
+        print_summary!();
     }
 
     #[test]
@@ -464,6 +502,8 @@ mod test {
                 Fq::from(3),
                 Fq::from(3),
             ]
-        )
+        );
+
+        print_summary!();
     }
 }

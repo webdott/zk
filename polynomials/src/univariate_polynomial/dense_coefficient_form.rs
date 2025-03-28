@@ -1,4 +1,5 @@
 use ark_ff::{BigInteger, PrimeField};
+use field_tracker::{end_tscope, start_tscope};
 use std::ops::{Add, Mul};
 use std::{cmp, mem};
 
@@ -17,6 +18,8 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     // From this, we can see that rather than raising x to the power each time,
     // we could keep a running product to multiply with the polynomials coefficients
     pub fn evaluate(&self, x: T) -> T {
+        start_tscope!("Univariate Polynomial Evaluate");
+
         let mut result: T = T::from(0);
         let mut running_x: T = T::from(1);
 
@@ -25,12 +28,20 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
             running_x *= x;
         }
 
+        end_tscope!();
+
         result
     }
 
     // Get evaluation of the polynomial over the boolean hypercube and return sum
     pub fn evaluate_sum_over_boolean_hypercube(&self) -> T {
-        self.evaluate(T::from(0)) + self.evaluate(T::from(1))
+        start_tscope!("Univariate Polynomial Sum Over Boolean HC");
+
+        let sum = self.evaluate(T::from(0)) + self.evaluate(T::from(1));
+
+        end_tscope!();
+
+        sum
     }
 
     // Given a specific list of points, find the original polynomial
@@ -39,6 +50,8 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     // f(x) =   ------------------------------   * y0   +  ------------------------------   * y1 ..... +  ------------------------------  * yn
     //          (x0 - x1)(x0 - x2)...(x0 - xn)              (x1 - x0)(x1 - x2)...(x1 - xn)                (xn - x0)(xn - x1)...(xn - xn-1)
     pub fn interpolate(x_points: &[T], y_points: &[T]) -> Self {
+        start_tscope!("Univariate Interpolate");
+
         let n = x_points.len();
 
         let mut res = UnivariatePolynomial {
@@ -69,6 +82,8 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
             res = res + (numerator.scalar_mul(y_points[i] / denominator));
         }
 
+        end_tscope!();
+
         res
     }
 
@@ -77,6 +92,8 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     //      coefficients: [1]
     // } which represents the number 1.
     pub fn scalar_mul(&self, num: T) -> Self {
+        start_tscope!("Univariate Scalar Mul");
+
         let n = self.coefficients.len();
         let mut res = vec![T::from(0); n];
 
@@ -84,12 +101,16 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
             res[i] = self.coefficients[i] * num;
         }
 
+        end_tscope!();
+
         UnivariatePolynomial { coefficients: res }
     }
 
     // Multiply polynomials together
     // You get a polynomial with a degree of the highest degrees in each polynomial multiplied together
     pub fn _mul(&self, p2: &Self) -> Self {
+        start_tscope!("Univariate Mul");
+
         let len_1 = self.coefficients.len();
         let len_2 = p2.coefficients.len();
 
@@ -118,6 +139,8 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
             }
         }
 
+        end_tscope!();
+
         UnivariatePolynomial {
             coefficients: coefs,
         }
@@ -126,6 +149,8 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
     // Add polynomials together
     // You get a polynomial with a degree of the highest degree in any of the polynomial
     pub fn _add(&self, p2: &Self) -> Self {
+        start_tscope!("Univariate Add");
+
         let len_1 = self.coefficients.len();
         let len_2 = p2.coefficients.len();
 
@@ -146,6 +171,8 @@ impl<T: PrimeField> UnivariatePolynomial<T> {
                 coefs[i] += p2.coefficients[i];
             }
         }
+
+        end_tscope!();
 
         UnivariatePolynomial {
             coefficients: coefs,
@@ -183,13 +210,18 @@ impl<T: PrimeField> Mul for UnivariatePolynomial<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ark_bn254::Fq;
+
+    use field_tracker::{print_summary, Ft};
+
+    type Fq = Ft!(ark_bn254::Fq);
 
     #[test]
     pub fn test_evaluate() {
         let poly = UnivariatePolynomial::new(vec![Fq::from(20), Fq::from(10), Fq::from(3)]);
 
         assert_eq!(poly.evaluate(Fq::from(2)), Fq::from(52));
+
+        print_summary!();
     }
 
     #[test]
@@ -212,7 +244,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_interpolate() {
+    pub fn test_fibonacci_range() {
         let poly = UnivariatePolynomial::interpolate(
             &vec![
                 Fq::from(0),
@@ -240,12 +272,14 @@ mod test {
 
         assert_eq!(
             poly.evaluate(Fq::from(5)),
-            poly.evaluate(Fq::from(5 - 1)) + poly.evaluate(Fq::from(5 - 2))
+            poly.evaluate(Fq::from(4)) + poly.evaluate(Fq::from(3))
         );
+
+        print_summary!();
     }
 
     #[test]
-    pub fn test_interpolate_2() {
+    pub fn test_interpolate() {
         let poly1 = UnivariatePolynomial::interpolate(
             &vec![Fq::from(0), Fq::from(1), Fq::from(2)],
             &vec![Fq::from(8), Fq::from(10), Fq::from(16)],
@@ -271,5 +305,7 @@ mod test {
         );
         assert_eq!(poly2.coefficients, vec![Fq::from(0), Fq::from(2)]);
         assert_eq!(poly3.coefficients, vec![Fq::from(0), Fq::from(2)]);
+
+        print_summary!();
     }
 }

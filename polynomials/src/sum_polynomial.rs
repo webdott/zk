@@ -83,10 +83,12 @@ impl<T: PrimeField> SumPolynomial<T> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use field_tracker::{print_summary, Ft};
+
     use crate::multilinear_polynomial::evaluation_form::MultiLinearPolynomial;
 
-    use super::*;
-    use ark_bn254::Fq;
+    type Fq = Ft!(ark_bn254::Fq);
 
     fn get_test_prod_polynomial() -> ProductPolynomial<Fq> {
         ProductPolynomial::new(vec![
@@ -107,6 +109,8 @@ mod tests {
             test_poly.reduce(),
             vec![Fq::from(8), Fq::from(18), Fq::from(32), Fq::from(50)]
         );
+
+        print_summary!();
     }
 
     #[test]
@@ -117,6 +121,8 @@ mod tests {
             test_poly.evaluate(&vec![Some(Fq::from(1)), Some(Fq::from(2))]),
             Fq::from(72)
         );
+
+        print_summary!();
     }
 
     #[test]
@@ -138,5 +144,7 @@ mod tests {
                 ])
             ]
         );
+
+        print_summary!();
     }
 }
