@@ -8,3 +8,4 @@ ark-bn254 = "0.5.0"
 ark-ff = "0.5.0"
 polynomials = { path = "../polynomials" }
 fiat_shamir = { path = "../fiat_shamir" }
+field-tracker = { git = "https://github.com/sublinearlabs/field-tracker/" }
