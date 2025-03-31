@@ -8,3 +8,4 @@ ark-ff = "0.5.0"
 sha3 = "0.10.8"
 fiat_shamir = { path = "../fiat_shamir" }
 ark-bn254 = "0.5.0"
+log = "0.4.27"
