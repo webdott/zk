@@ -79,22 +79,22 @@ impl<T: PrimeField, F: GenericHashFunctionTrait> GenericTranscript<T, F> {
     }
 
     // This is used for just getting a hash immediately for a given value (use case: for merkle proof)
-    pub fn get_hash(&mut self, data: &[u8]) -> T {
+    pub fn get_hash(&mut self, data: &[u8]) -> Vec<u8> {
         self.append(&data);
 
         let hash_result = self.hash_function.squeeze();
 
         // we don't need to retain the value for next update. So we clear
-        self.hash_function.clear();
+        self.hash_function.empty();
 
-        T::from_le_bytes_mod_order(&hash_result)
+        hash_result
     }
 }
 
 pub trait GenericHashFunctionTrait {
     fn absorb(&mut self, data: &[u8]);
     fn squeeze(&self) -> Vec<u8>;
-    fn clear(&self);
+    fn empty(&mut self);
 }
 
 impl GenericHashFunctionTrait for Keccak256 {
@@ -106,8 +106,8 @@ impl GenericHashFunctionTrait for Keccak256 {
         self.clone().finalize().to_vec()
     }
 
-    fn clear(&self) {
-        self.clear();
+    fn empty(&mut self) {
+        self.reset();
     }
 }
 
