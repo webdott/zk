@@ -75,7 +75,7 @@ impl<T: FftField> Polynomial<T> {
     // This can be done in O(nlogn) time to perform a linear O(n) operation in Sample like evaluation that would have originally taken O(n^2) in Coefficients form
 
     // Transform to evaluation form
-    pub fn fft(coefficients: &[T]) -> Vec<T> {
+    pub fn convert_to_evaluations(coefficients: &[T]) -> Vec<T> {
         Self::_fft(coefficients, false)
     }
 
@@ -83,7 +83,7 @@ impl<T: FftField> Polynomial<T> {
     // This can be done in O(nlogn) time as well to perform a linear O(n) operation in Coefficients form like Multiplication that would have originally taken O(n^2) in Sample form
 
     // Transform to Coefficient form
-    pub fn ifft(values: &[T]) -> Vec<T> {
+    pub fn convert_to_coefficents(values: &[T]) -> Vec<T> {
         Self::_fft(&values, true)
             .iter()
             .map(|x| *x / T::from(values.len() as u64))
@@ -99,8 +99,9 @@ mod test {
     #[test]
     pub fn test_fft_and_ifft() {
         let coefficients = vec![Fr::from(5), Fr::from(3), Fr::from(2), Fr::from(1)];
-        let values = Polynomial::fft(&coefficients);
-        let result_coefficients = Polynomial::ifft(&values);
+
+        let values = Polynomial::convert_to_evaluations(&coefficients);
+        let result_coefficients = Polynomial::convert_to_coefficents(&values);
 
         assert_eq!(result_coefficients, coefficients,)
     }

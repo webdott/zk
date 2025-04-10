@@ -21,6 +21,14 @@ impl MerkleProof {
 }
 
 impl<T: PrimeField, F: GenericHashFunctionTrait> MerkleTree<T, F> {
+    pub fn new() -> Self {
+        Self {
+            _marker1: PhantomData,
+            _marker2: PhantomData,
+            hash_layers: Vec::new(),
+        }
+    }
+
     fn get_hash_partner(&self, hash_index: usize, layer_idx: usize) -> Vec<u8> {
         if hash_index % 2 == 0 {
             self.hash_layers[layer_idx][hash_index + 1].to_vec()
@@ -58,7 +66,7 @@ impl<T: PrimeField, F: GenericHashFunctionTrait> MerkleTree<T, F> {
         MerkleProof::new(hash_path)
     }
 
-    pub fn build(&mut self, inputs: &[T], transcript: &mut GenericTranscript<T, F>) {
+    pub fn build(&mut self, inputs: &[T], transcript: &mut GenericTranscript<T, F>) -> Vec<u8> {
         let mut current_layer = Vec::from(inputs);
         let input_len = current_layer.len();
 
@@ -96,6 +104,8 @@ impl<T: PrimeField, F: GenericHashFunctionTrait> MerkleTree<T, F> {
 
             current_hashed_layer = next_hashed_layer;
         }
+
+        current_hashed_layer[0].to_vec()
     }
 
     pub fn verify_proof(
@@ -141,11 +151,7 @@ mod tests {
     use fiat_shamir::transcript::GenericTranscript;
 
     fn get_merkle_tree(values: &[Fq]) -> MerkleTree<Fq, CoreWrapper<Keccak256Core>> {
-        let mut merkle_tree: MerkleTree<Fq, CoreWrapper<Keccak256Core>> = MerkleTree {
-            _marker1: PhantomData,
-            _marker2: PhantomData,
-            hash_layers: vec![],
-        };
+        let mut merkle_tree: MerkleTree<Fq, CoreWrapper<Keccak256Core>> = MerkleTree::new();
 
         merkle_tree.build(values, &mut GenericTranscript::new(Keccak256::new()));
 

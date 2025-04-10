@@ -319,8 +319,10 @@ version = "0.1.0"
 dependencies = [
  "ark-bn254",
  "ark-ff",
+ "fft",
  "fiat_shamir",
  "log",
+ "polynomials",
  "round",
  "sha3",
 ]
