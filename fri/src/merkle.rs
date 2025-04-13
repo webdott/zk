@@ -1,7 +1,8 @@
-use ark_ff::{BigInteger, PrimeField};
-use std::marker::PhantomData;
-
 use fiat_shamir::transcript::{GenericHashFunctionTrait, GenericTranscript};
+
+use ark_ff::{BigInteger, PrimeField};
+use std::cmp::max;
+use std::marker::PhantomData;
 
 pub struct MerkleTree<T: PrimeField, F: GenericHashFunctionTrait> {
     _marker1: PhantomData<T>,
@@ -21,6 +22,14 @@ impl MerkleProof {
 }
 
 impl<T: PrimeField, F: GenericHashFunctionTrait> MerkleTree<T, F> {
+    pub fn new() -> Self {
+        Self {
+            _marker1: PhantomData,
+            _marker2: PhantomData,
+            hash_layers: Vec::new(),
+        }
+    }
+
     fn get_hash_partner(&self, hash_index: usize, layer_idx: usize) -> Vec<u8> {
         if hash_index % 2 == 0 {
             self.hash_layers[layer_idx][hash_index + 1].to_vec()
@@ -58,13 +67,14 @@ impl<T: PrimeField, F: GenericHashFunctionTrait> MerkleTree<T, F> {
         MerkleProof::new(hash_path)
     }
 
-    pub fn build(&mut self, inputs: &[T], transcript: &mut GenericTranscript<T, F>) {
+    pub fn build(&mut self, inputs: &[T], transcript: &mut GenericTranscript<T, F>) -> Vec<u8> {
         let mut current_layer = Vec::from(inputs);
         let input_len = current_layer.len();
+        let next_power_of_two = max(input_len.next_power_of_two(), 2);
 
-        if input_len.next_power_of_two() != input_len {
+        if next_power_of_two != input_len {
             // pad input layer with 1's if input length is not a power of 2
-            let rem_length = input_len.next_power_of_two() - input_len;
+            let rem_length = next_power_of_two - input_len;
             current_layer.append(&mut vec![T::one(); rem_length]);
         }
 
@@ -96,16 +106,18 @@ impl<T: PrimeField, F: GenericHashFunctionTrait> MerkleTree<T, F> {
 
             current_hashed_layer = next_hashed_layer;
         }
+
+        current_hashed_layer[0].to_vec()
     }
 
     pub fn verify_proof(
         &mut self,
         value: &T,
         index_of_value: usize,
-        proof: MerkleProof,
+        proof: &MerkleProof,
+        root_hash: &[u8],
         transcript: &mut GenericTranscript<T, F>,
     ) -> bool {
-        let root_hash = &self.hash_layers[self.hash_layers.len() - 1][0];
         let hashed_value = transcript.get_hash(&value.into_bigint().to_bytes_le());
         let proof_partition_indexes =
             self.get_layer_indexes_for_proof_partitions(index_of_value, proof.hash_path.len());
@@ -140,21 +152,19 @@ mod tests {
 
     use fiat_shamir::transcript::GenericTranscript;
 
-    fn get_merkle_tree(values: &[Fq]) -> MerkleTree<Fq, CoreWrapper<Keccak256Core>> {
-        let mut merkle_tree: MerkleTree<Fq, CoreWrapper<Keccak256Core>> = MerkleTree {
-            _marker1: PhantomData,
-            _marker2: PhantomData,
-            hash_layers: vec![],
-        };
+    fn get_merkle_tree_and_root_hash(
+        values: &[Fq],
+    ) -> (MerkleTree<Fq, CoreWrapper<Keccak256Core>>, Vec<u8>) {
+        let mut merkle_tree: MerkleTree<Fq, CoreWrapper<Keccak256Core>> = MerkleTree::new();
 
-        merkle_tree.build(values, &mut GenericTranscript::new(Keccak256::new()));
+        let root_hash = merkle_tree.build(values, &mut GenericTranscript::new(Keccak256::new()));
 
-        merkle_tree
+        (merkle_tree, root_hash)
     }
 
     #[test]
     pub fn test_verify_merkle_tree() {
-        let mut merkle_tree = get_merkle_tree(&[
+        let (mut merkle_tree, root_hash) = get_merkle_tree_and_root_hash(&[
             Fq::from(1),
             Fq::from(2),
             Fq::from(3),
@@ -167,11 +177,15 @@ mod tests {
 
         let proof_for_5 = merkle_tree.get_proof(4);
 
-        assert!(merkle_tree.verify_proof(
-            &Fq::from(5),
-            4,
-            proof_for_5,
-            &mut GenericTranscript::new(Keccak256::new()),
-        ))
+        assert!(
+            merkle_tree.verify_proof(
+                &Fq::from(5),
+                4,
+                &proof_for_5,
+                &root_hash,
+                &mut GenericTranscript::new(Keccak256::new()),
+            ),
+            "merkle proof not valid"
+        );
     }
 }
