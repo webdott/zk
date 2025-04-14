@@ -65,8 +65,6 @@ impl<T: FftField + PrimeField, F: GenericHashFunctionTrait> FriVerifier<T, F> {
                 {
                     return false;
                 }
-
-                break;
             };
         }
 
